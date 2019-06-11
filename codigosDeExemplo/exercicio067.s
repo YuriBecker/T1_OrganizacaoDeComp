@@ -131,7 +131,8 @@ fim_do_programa:
 .data
 buffer:           .space 256    # criamos um buffer com 256 bytes
 descritor_arquivo: .space 4     # descritor do arquivo
-nome_arquivo:     .asciiz "/media/regis/3EBC771EBC76D03F/Doc/Ufsm/barattosdeorg/moodle/conteudo/codigos/exercicio067.s" # nome do arquivo a ser aberto
+#nome_arquivo:     .asciiz "/home/yuri/Documents/Workspace/Assembly/T1_OrgDeComp/projeto/text.bin" # nome do arquivo a ser aberto
+nome_arquivo:     .asciiz "text.txt" # nome do arquivo a ser aberto/
 # strings usadas no programa
 str_erro_leitura: .asciiz "\n=== O arquivo não pode ser lido ===\n"
 str_fim_arquivo:  .asciiz "\n=== O final do arquivo foi encontrado ===\n"
