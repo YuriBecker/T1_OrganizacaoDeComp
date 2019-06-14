@@ -55,10 +55,11 @@ main:
 		lw    $a0, descritor_text                 # $a0 <- o valor do descritor do arquivo
             la    $a1, instrucoes                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
             jal   leia_caracteres_arquivo			# Guarda caracteres na memória
-            jal   fecha_arquivos
+            
+            jal   fecha_arquivos                      # fecha os dois arquivos 
 		la    $a1, instrucoes				# passa o buffer de instrucoes
-            lw    $a2, qtd_instrucoes                 # passa o numero de instrucoes
-		j     busca_instrucao   
+            lw    $a2, qtd_instrucoes                 # passa o numero de instrucoes informado pelo usuario
+		j     busca_instrucao                     # pula para busca da instrucao 
 		
 # lemos o arquivo e colocamos na memória
 leia_caracteres_arquivo:
@@ -99,23 +100,35 @@ arquivo_foi_aberto:
             li    $v0, servico_imprime_string         # serviço 4: imprime uma string
             la    $a0, msg_arquivo_aberto             # $a0 possui o endereço da string a ser apresentada
             syscall                                   # apresenta a string
-            addiu $sp, $sp, 4                         # restauramos a pilha  
-            jr    $ra                                 # retornamos ao procedimento chamador  
-    	
-busca_instrucao:
+            addiu $sp, $sp, 4                         # restauramos a pilha   
+            jr    $ra                                # retornamos ao procedimento chamador 
+
+busca_instrucao:                         
+           
             lw 	$t3, contador   				# carrega o contador
             lw    $t4, pc                             # carrega valor de pc
             lw	$t5, 0($a1)		                  # busca instrucao
             sw	$t5, ir		                  # IR recebe a instrucao que sera executada
             
             bgt 	$t3, $a2, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes 
+            # Mostra mensagem informando o endereco
+		li $v0, servico_imprime_string 
+		la $a0, msg_exec_instrucao1
+		syscall
+            li    $v0, 34                             # serviço 34: imprime o hexadecima em $a0
+            move 	$a0, $t4		                  # $a0 = pc
+            syscall 
+            # Mostra mensagem informando a instrucao
+		li $v0, servico_imprime_string 
+		la $a0, msg_exec_instrucao2
+		syscall
             li    $v0, 34                             # serviço 34: imprime o hexadecima em $a0
             move 	$a0, $t5		                  # $a0 = instrucao = IR
             syscall                                   # imprimimos o caractere do instrucoes     
-            li    $v0, servico_imprime_caracter       # imprime um caractere
-            li    $a0, '\n'                           # $a0 <- endereço do caractere a ser apresentado
-            syscall                                   # apresenta o caractere 
-                        
+            # li    $v0, servico_imprime_caracter       # imprime um caractere
+            # li    $a0, '\n'                           # $a0 <- endereço do caractere a ser apresentado
+            # syscall                                   # apresenta o caractere 
+
             addi  $a1, $a1, 4                         # incrementa o endereco
             addi  $t3, $t3, 1                         # contador++
             addi	$t4, $t4, 4			            # pc = pc + 4
@@ -176,3 +189,5 @@ contador:               .word 1 # <- Contador do loop
 msg_qtd_intrucoes:      .asciiz "Numero de instrucoes que serão executadas (Max 48): "
 msg_arquivo_nao_foi_aberto: .asciiz "\nArquivo nao pode ser aberto \n"
 msg_arquivo_aberto:     .asciiz "\nArquivo aberto com sucesso! \n" 
+msg_exec_instrucao1:     .asciiz "\nExecutando instrução no endereco -> "
+msg_exec_instrucao2:     .asciiz " - instrução  -> "
