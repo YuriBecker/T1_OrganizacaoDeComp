@@ -44,26 +44,31 @@ main:
             la    $a0, nome_arquivo_data 
             la    $a1, descritor_data
             jal   abre_arquivo
+		lw    $a0, descritor_data                # $a0 <- o valor do descritor do arquivo
+            la    $a1, data                          # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+            jal   leia_caracteres_arquivo		     # Guarda caracteres na memória
+            
 # abrimos o arquivo text.bin para a leitura
             la    $a0, nome_arquivo_text 
             la    $a1, descritor_text
             jal   abre_arquivo
-
-# lemos o arquivo até preencher o instrucoes
+		lw    $a0, descritor_text                 # $a0 <- o valor do descritor do arquivo
+            la    $a1, instrucoes                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+            jal   leia_caracteres_arquivo			# Guarda caracteres na memória
+            jal   fecha_arquivos
+		la    $a1, instrucoes				# passa o buffer de instrucoes
+            lw    $a2, qtd_instrucoes                 # passa o numero de instrucoes
+		j     busca_instrucao   
+		
+# lemos o arquivo e colocamos na memória
 leia_caracteres_arquivo:
             li    $v0, servico_leia_arquivo           # serviço 14: leitura do arquivo
-            lw    $a0, descritor_text                 # $a0 <- o valor do descritor do arquivo
-            la    $a1, instrucoes                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
-            li    $a2, 1024                           # $a2 <- número máximo de carcateres lidos
+            li    $a2, 4096                           # $a2 <- número máximo de carcateres lidos
             syscall                                   # fazemos a leitura de caracateres do arquivo para o instrucoes
             move  $s0, $v0                            # armazenamos o número de caracteres lidos em $s0
-            move  $s1, $a1                            # armazenamos o endereço das instrucoes em $s1
+            move  $s1, $a1                            # armazenamos o endereço das instrucoes em $s1                                     
+            jr    $ra 						#retorna para o procedimento chamador 
             
-            la    $s1, instrucoes
-            la    $t0, qtd_instrucoes 
-            lw    $s3, 0($t0)                         # carrega o numero de instrucoes
-		li 	$t3, 1                              # inicializa o contador
-            j imprime_instrucoes
 # guardamos o descritor do arquivo 
 arquivo_aberto_com_sucesso:
             la    $t0, descritor_text                 # $t0 <- endereço da variável descritor_arquivo
@@ -96,21 +101,27 @@ arquivo_foi_aberto:
             syscall                                   # apresenta a string
             addiu $sp, $sp, 4                         # restauramos a pilha  
             jr    $ra                                 # retornamos ao procedimento chamador  
-
     	
-imprime_instrucoes:
-            bgt 	$t3, $s3, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes 
-            li   $v0, 34                              # serviço 34: imprime o hexadecima em $a0
-            lw   $a0, 0($s1)                          # carregamos em $a0 o descritor do arquivo
-            syscall                                   # imprimimos o caractere do instrucoes
+busca_instrucao:
+            lw 	$t3, contador   				# carrega o contador
+            lw    $t4, pc                             # carrega valor de pc
+            lw	$t5, 0($a1)		                  # busca instrucao
+            sw	$t5, ir		                  # IR recebe a instrucao que sera executada
             
-            li   $v0, servico_imprime_caracter        # imprime um caractere
-            li   $a0, '\n'                            # $a0 <- endereço do caractere a ser apresentado
-            syscall                                   # apresenta o caractere             
-            addi $s1, $s1, 4                          #incrementa o endereco
-            addi $t3, $t3, 1                          #contador++
-             
-            j imprime_instrucoes
+            bgt 	$t3, $a2, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes 
+            li    $v0, 34                             # serviço 34: imprime o hexadecima em $a0
+            move 	$a0, $t5		                  # $a0 = instrucao = IR
+            syscall                                   # imprimimos o caractere do instrucoes     
+            li    $v0, servico_imprime_caracter       # imprime um caractere
+            li    $a0, '\n'                           # $a0 <- endereço do caractere a ser apresentado
+            syscall                                   # apresenta o caractere 
+                        
+            addi  $a1, $a1, 4                         # incrementa o endereco
+            addi  $t3, $t3, 1                         # contador++
+            addi	$t4, $t4, 4			            # pc = pc + 4
+            sw    $t3, contador		            # Salva valor do contador
+            sw    $t4, pc		                  # Salva valor do contador
+            j     busca_instrucao
                          
 # fechamos o arquivo
 fecha_arquivos:
@@ -122,7 +133,7 @@ fecha_arquivos:
             la    $t0, descritor_data                 # $t0 <- endereço do descritor do arquivo
             lw    $a0, 0($t0)                         # carregamos em $a0 o descritor do arquivo
             syscall                                   # fechamos o arquivo
-		
+            jr    $ra  
 #fechamos o programa
 fim_programa:
 	    	li $v0, 10
@@ -132,9 +143,6 @@ fim_programa:
 # segmento de dados
 
 .data
-#str1: 	.space 15 # primeira string do data.bin
-#str2: 	.space 5 # segunda string do data.bin
-
 # Usados para manipulacao dos arquivos
 data: 	            .space 4096                   # guarda isntrucoes do data.bin
 instrucoes:	            .space 4096                   # guarda isntrucoes do text.bin 
@@ -162,9 +170,9 @@ funct: 	            .space 4
 end16bits: 	            .space 4
 end26bits: 	            .space 4
 
-contador: .word 1 # <- Contador do loop
+contador:               .word 1 # <- Contador do loop
 
 # strings de mensagens para o usuario
-msg_qtd_intrucoes: .asciiz "Numero de instrucoes que serão executadas (Max 48): "
+msg_qtd_intrucoes:      .asciiz "Numero de instrucoes que serão executadas (Max 48): "
 msg_arquivo_nao_foi_aberto: .asciiz "\nArquivo nao pode ser aberto \n"
-msg_arquivo_aberto: .asciiz "\nArquivo aberto com sucesso! \n" 
+msg_arquivo_aberto:     .asciiz "\nArquivo aberto com sucesso! \n" 
