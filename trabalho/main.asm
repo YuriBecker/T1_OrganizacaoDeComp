@@ -5,22 +5,23 @@
 ##################################################################################################################
 
 #servicos
-.eqv	servico_imprime_string      4
-.eqv  servico_imprime_caracter    11
-.eqv  servico_abre_arquivo        13
-.eqv  servico_leia_arquivo        14
-.eqv  servico_fecha_arquivo       16
-.eqv  servico_termina_programa    17
+.eqv	servico_imprime_string        4
+.eqv	servico_le_input              5
+.eqv  servico_imprime_caracter      11
+.eqv  servico_abre_arquivo          13
+.eqv  servico_leia_arquivo          14
+.eqv  servico_fecha_arquivo         16
+.eqv  servico_termina_programa      17
 
 # mascaras usadas para ler as instrucoes
-.eqv  mask_opcode 0xFC000000
-.eqv  mask_rs 0x03E00000
-.eqv  mask_rt 0x001F0000
-.eqv 	mask_rd 0X0000F800
-.eqv  mask_shift 0x000007C0
-.eqv	mask_funct 0x0000003F
-.eqv  mask_end16bits 0x0000FFFF
-.eqv  mask_end26bits 0x03FFFFFF
+.eqv  mask_opcode                   0xFC000000
+.eqv  mask_rs                       0x03E00000
+.eqv  mask_rt                       0x001F0000
+.eqv 	mask_rd                       0X0000F800
+.eqv  mask_shift                    0x000007C0
+.eqv	mask_funct                    0x0000003F
+.eqv  mask_end16bits                0x0000FFFF
+.eqv  mask_end26bits                0x03FFFFFF
 
 
 # segmento de texto (programa)
@@ -31,96 +32,96 @@ main:
 		lw $t0, end_inicial_texto
 		sw $t0, pc
 # Mostra mensagem perguntando o numero de instrucoes
-		li $v0,4
-		la $a0,msg_qtd_intrucoes
+		li $v0, servico_imprime_string 
+		la $a0, msg_qtd_intrucoes
 		syscall
 # le input do teclado
-		li $v0,5
+		li $v0, servico_le_input  
 		syscall
 		sw $v0, qtd_instrucoes
 	
-# abrimos o arquivo para a leitura
-            # li    $v0, 13       # serviço 13: abre um arquivo
-            # la    $a0, nome_arquivo_text # $a0 <- endereço da string com o nome do arquivo
-            # li    $a1, 0        # $a1 <- 0: arquivo será aberto para leitura
-            # li    $a2, 0        # modo não é usado. Use o valor 0.
-            # syscall             # abre o arquivo
+# abrimos o arquivo data.bin para a leitura           
+            la    $a0, nome_arquivo_data 
+            la    $a1, descritor_data
+            jal   abre_arquivo
+# abrimos o arquivo text.bin para a leitura
             la    $a0, nome_arquivo_text 
             la    $a1, descritor_text
-            jal   abre_arquivo_text
+            jal   abre_arquivo
 
 # lemos o arquivo até preencher o instrucoes
 leia_caracteres_arquivo:
-            li    $v0, 14       # serviço 14: leitura do arquivo
-            lw    $a0, descritor_text   # $a0 <- o valor do descritor do arquivo
-            la    $a1, instrucoes   # $a1 <- endereço do instrucoes que guarda os carcateres lidos
-            li    $a2, 1024      # $a2 <- número máximo de carcateres lidos
-            syscall             # fazemos a leitura de caracateres do arquivo para o instrucoes
-		                
-            move  $s0, $v0      # armazenamos o número de caracteres lidos em $s0
-            move  $s1, $a1      # armazenamos o endereço das instrucoes em $s1
+            li    $v0, servico_leia_arquivo           # serviço 14: leitura do arquivo
+            lw    $a0, descritor_text                 # $a0 <- o valor do descritor do arquivo
+            la    $a1, instrucoes                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+            li    $a2, 1024                           # $a2 <- número máximo de carcateres lidos
+            syscall                                   # fazemos a leitura de caracateres do arquivo para o instrucoes
+            move  $s0, $v0                            # armazenamos o número de caracteres lidos em $s0
+            move  $s1, $a1                            # armazenamos o endereço das instrucoes em $s1
             
             la    $s1, instrucoes
             la    $t0, qtd_instrucoes 
-            lw    $s3, 0($t0) # carrega o numero de instrucoes
-		li 	$t3, 1 # inicializa o contador
+            lw    $s3, 0($t0)                         # carrega o numero de instrucoes
+		li 	$t3, 1                              # inicializa o contador
             j imprime_instrucoes
-# guardamos o descritor do arquivo aberto em descritor_arquivo
+# guardamos o descritor do arquivo 
 arquivo_aberto_com_sucesso:
-            la    $t0, descritor_text # $t0 <- endereço da variável descritor_arquivo
-            sw    $v0, 0($t0)   # armazenamos na variável descritor_arquivo seu valor
+            la    $t0, descritor_text                 # $t0 <- endereço da variável descritor_arquivo
+            sw    $v0, 0($t0)                         # armazenamos na variável descritor_arquivo seu valor
 
-abre_arquivo_text:
-            addiu $sp, $sp, -4  # será adicionado um elemento na pilha
-            sw    $a1, 0($sp)   # guardamos na pilha o endereço da variável descritor do arquivo
-            li    $v0, servico_abre_arquivo # serviço 13: abre um arquivo
-            la    $a0, nome_arquivo_text # $a0 <- endereço da string com o nome do arquivo
-            li    $a1, 0        # $a1 <- 0: arquivo será aberto para leitura
-            li    $a2, 0        # modo não é usado. Use o valor 0.
-            syscall             # abre o arquivo
+abre_arquivo:
+            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
+            sw    $a1, 0($sp)                         # guardamos na pilha o endereço da variável descritor do arquivo
+            li    $v0, servico_abre_arquivo           # serviço 13: abre um arquivo
+            li    $a1, 0                              # $a1 <- 0: arquivo será aberto para leitura
+            li    $a2, 0                              # modo não é usado. Use o valor 0.
+            syscall                                   # abre o arquivo
 
             # guardamos o descritor do arquivo em descritor_arquivo
-            lw    $a1, 0($sp)   # carregamos o endereço da variável com o descritor do arquivo
-            sw    $v0, 0($a1)   # armazenamos o descritor do arquivo em descritor_arquivo
-            slt   $t0, $v0, $zero # $t0 = 1 se $v0 < 0 ($v0 negativo)
-            bne   $t0, $zero, arquivo_nao_foi_aberto # se $v0 é negativo, o arquivo não pode ser aberto
+            lw    $a1, 0($sp)                         # carregamos o endereço da variável com o descritor do arquivo
+            sw    $v0, 0($a1)                         # armazenamos o descritor do arquivo em descritor_arquivo
+            slt   $t0, $v0, $zero                     # $t0 = 1 se $v0 < 0 ($v0 negativo)
+            bne   $t0, $zero, arquivo_nao_foi_aberto  # se $v0 é negativo, o arquivo não pode ser aberto
             j     arquivo_foi_aberto
 
 arquivo_nao_foi_aberto:
-            li    $v0, servico_imprime_string        # serviço 4: imprime uma string
-            la    $a0, msg_arquivo_nao_foi_aberto # $a0 armazena o endereço da string a ser apresentada
-            syscall             # apresenta a string
-            j     fim_programa # termina o programa
+            li    $v0, servico_imprime_string         # serviço 4: imprime uma string
+            la    $a0, msg_arquivo_nao_foi_aberto     # $a0 armazena o endereço da string a ser apresentada
+            syscall                                   # apresenta a string
+            j     fim_programa                        # termina o programa
 
 arquivo_foi_aberto:
-            li    $v0, servico_imprime_string       # serviço 4: imprime uma string
-            la    $a0, msg_arquivo_aberto           # $a0 possui o endereço da string a ser apresentada
-            syscall             # apresenta a string
-            addiu $sp, $sp, 4   # restauramos a pilha  
-            jr    $ra           # retornamos ao procedimento chamador  
+            li    $v0, servico_imprime_string         # serviço 4: imprime uma string
+            la    $a0, msg_arquivo_aberto             # $a0 possui o endereço da string a ser apresentada
+            syscall                                   # apresenta a string
+            addiu $sp, $sp, 4                         # restauramos a pilha  
+            jr    $ra                                 # retornamos ao procedimento chamador  
 
     	
 imprime_instrucoes:
-            bgt 	$t3, $s3, fim_programa # Verifica se ja mostrou a quantidade de instrucoes 
-            li   $v0, 34       # serviço 34: imprime o hexadecima em $a0
-            lw   $a0, 0($s1)   # carregamos em $a0 o descritor do arquivo
-            syscall             # imprimimos o caractere do instrucoes
+            bgt 	$t3, $s3, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes 
+            li   $v0, 34                              # serviço 34: imprime o hexadecima em $a0
+            lw   $a0, 0($s1)                          # carregamos em $a0 o descritor do arquivo
+            syscall                                   # imprimimos o caractere do instrucoes
             
-            li   $v0, 11        # serviço 4: imprime uma string
-            li   $a0, '\n' # $a0 <- endereço da string a ser apresentada
-            syscall             # apresenta a string
-             
-            addi $s1, $s1, 4 #incrementa o endereco
-            addi $t3, $t3, 1 #contador++
+            li   $v0, servico_imprime_caracter        # imprime um caractere
+            li   $a0, '\n'                            # $a0 <- endereço do caractere a ser apresentado
+            syscall                                   # apresenta o caractere             
+            addi $s1, $s1, 4                          #incrementa o endereco
+            addi $t3, $t3, 1                          #contador++
              
             j imprime_instrucoes
                          
 # fechamos o arquivo
-fecha_arquivo:
-            li    $v0, 16       # serviço 16: fecha um arquivo
-            la    $t0, descritor_text # $t0 <- endereço do descritor do arquivo
-            lw    $a0, 0($t0)   # carregamos em $a0 o descritor do arquivo
-            syscall             # fechamos o arquivo
+fecha_arquivos:
+            li    $v0, servico_fecha_arquivo          # serviço 16: fecha um arquivo
+            la    $t0, descritor_text                 # $t0 <- endereço do descritor do arquivo
+            lw    $a0, 0($t0)                         # carregamos em $a0 o descritor do arquivo
+            syscall                                   # fechamos o arquivo
+            li    $v0, servico_fecha_arquivo          # serviço 16: fecha um arquivo
+            la    $t0, descritor_data                 # $t0 <- endereço do descritor do arquivo
+            lw    $a0, 0($t0)                         # carregamos em $a0 o descritor do arquivo
+            syscall                                   # fechamos o arquivo
 		
 #fechamos o programa
 fim_programa:
@@ -135,12 +136,12 @@ fim_programa:
 #str2: 	.space 5 # segunda string do data.bin
 
 # Usados para manipulacao dos arquivos
-data: 	            .space 4096 # guarda isntrucoes do data.bin
-instrucoes:	            .space 4096 # guarda isntrucoes do text.bin 
-descritor_data:         .space 4     # descritor do arquivo 1
-descritor_text:         .space 4     # descritor do arquivo 2
-nome_arquivo_text:      .asciiz "text.bin" # nome do arquivo1 a ser aberto
-nome_arquivo_data:      .asciiz "data.bin" # nome do arquivo2 a ser aberto
+data: 	            .space 4096                   # guarda isntrucoes do data.bin
+instrucoes:	            .space 4096                   # guarda isntrucoes do text.bin 
+descritor_data:         .space 4                      # descritor do arquivo 1
+descritor_text:         .space 4                      # descritor do arquivo 2
+nome_arquivo_text:      .asciiz "text.bin"            # nome do arquivo1 a ser aberto
+nome_arquivo_data:      .asciiz "data.bin"            # nome do arquivo2 a ser aberto
 
 # dados do usuário
 qtd_instrucoes:         .word 
