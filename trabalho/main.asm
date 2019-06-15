@@ -4,7 +4,8 @@
 # Constantes usadas no programa
 ##################################################################################################################
 
-#servicos
+# servicos
+.eqv	servico_imprime_int        	1
 .eqv	servico_imprime_string        4
 .eqv	servico_le_input              5
 .eqv  servico_imprime_caracter      11
@@ -12,6 +13,7 @@
 .eqv  servico_leia_arquivo          14
 .eqv  servico_fecha_arquivo         16
 .eqv  servico_termina_programa      17
+.eqv  servico_imprime_hexa          34
 
 # mascaras usadas para ler as instrucoes
 .eqv  mask_opcode                   0xFC000000
@@ -46,7 +48,7 @@ pc: 		            .space 4                      # Guarda o endereco da instrucao
 ir: 		            .space 4                      # Guarda a instrucao
 
 # dados usados para salvar as informacoes do ir
-op: 		            .space 4
+opcode: 		      .space 4
 rs: 		            .space 4
 rt: 		            .space 4
 rd: 	 	            .space 4
@@ -63,6 +65,7 @@ msg_arquivo_nao_foi_aberto:   .asciiz "\nArquivo nao pode ser aberto \n"
 msg_arquivo_aberto:           .asciiz "\nArquivo aberto com sucesso! \n" 
 msg_exec_instrucao1:          .asciiz "\nExecutando instrução no endereco -> "
 msg_exec_instrucao2:          .asciiz " - instrução  -> "
+msg_exec_instrucao3:          .asciiz " - OPCODE  -> "
 
 # segmento de texto (programa)
 ###################################################################################################################
@@ -82,14 +85,14 @@ main:
             jal   abre_arquivo                        # abrimos o arquivo data.bin para a leitura  
 		lw    $a0, descritor_data                 # $a0 <- o valor do descritor do arquivo
             la    $a1, data                           # $a1 <- endereço do instrucoes que guarda os carcateres lidos
-            jal   leia_caracteres_arquivo		      # Guarda caracteres na memória
+            jal   leia_caracteres_arquivo		      # pula para leia_caracteres_arquivo e salva a prox posicao no $ra
             
             la    $a0, nome_arquivo_text 
             la    $a1, descritor_text
             jal   abre_arquivo                        # abrimos o arquivo text.bin para a leitura
 		lw    $a0, descritor_text                 # $a0 <- o valor do descritor do arquivo
             la    $a1, instrucoes                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
-            jal   leia_caracteres_arquivo			# Guarda caracteres na memória
+            jal   leia_caracteres_arquivo			# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
             
             jal   fecha_arquivos                      # fecha os dois arquivos 
 		la    $a1, instrucoes				# passa o buffer de instrucoes
@@ -147,16 +150,18 @@ busca_instrucao:
 		li    $v0, servico_imprime_string 
 		la    $a0, msg_exec_instrucao1            # Mostra mensagem informando o endereco
 		syscall                                   # chamada ao sistema
-            li    $v0, 34                             # serviço 34: imprime o hexadecima em $a0
+            li    $v0, servico_imprime_hexa           # serviço 34: imprime o hexadecima em $a0
             move 	$a0, $t4		                  # $a0 = pc
             syscall 
 		li    $v0, servico_imprime_string 
 		la    $a0, msg_exec_instrucao2            # Mostra mensagem informando a instrucao
 		syscall                                   # chamada ao sistema 
-            li    $v0, 34                             # serviço 34: imprime o hexadecima em $a0
+            li    $v0, servico_imprime_hexa           # serviço 34: imprime o hexadecima em $a0
             move 	$a0, $t5		                  # $a0 = instrucao = IR
             syscall                                   # imprimimos o caractere do instrucoes     
 
+            jal	decodifica				      # pula para decodifica e salva a prox posicao no $ra
+                                              
             addi  $a1, $a1, 4                         # incrementa o endereco
             addi  $t3, $t3, 1                         # contador++
             addi	$t4, $t4, 4			            # pc = pc + 4
@@ -176,6 +181,56 @@ fecha_arquivos:
             jr    $ra                                 # voltamos ao procedimento chamador
 
 fim_programa:
-	    	li    $v0, servico_termina_programa       #fechamos o programa
-	   	syscall
+	    	li    $v0, servico_termina_programa       # fechamos o programa
+	   	syscall                                   # chamada ao sistema
+
+decodifica:                                           #decodificamos todos os posiveis cabeçalhos binários
+		li    $v0, servico_imprime_string 
+		la    $a0, msg_exec_instrucao3            # Mostra mensagem informando o opcode
+		syscall                                   # chamada ao sistema 
+		
+            lw	$s0, ir                             # carregamos instrução
+            li    $s2, mask_opcode                    # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o opcode
+            srl	$s3, $s1, 26                        # jogamos o resultado para o final 
+            sw	$s3, opcode		                  # salvamos na memória
+
+            li    $v0, servico_imprime_hexa
+		move  $a0, $s3                            # Mostra mensagem informando o endereco
+		syscall                                   # chamada ao sistema
+
+            li    $s2, mask_rs                        # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o rs
+            srl	$s3, $s1, 21                        # jogamos o resultado para o fim
+            sw	$s3, rs		                  # salvamos na memória
+
+            li    $s2, mask_rt                        # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o rt
+            srl	$s3, $s1, 16                        # jogamos o resultado para o fim
+            sw	$s3, rt		                  # salvamos na memória
+
+            li    $s2, mask_rd                        # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o rd
+            srl	$s3, $s1, 11                        # jogamos o resultado para o fim
+            sw	$s3, rd		                  # salvamos na memória
+
+            li    $s2, mask_shift                     # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o shift
+            srl	$s3, $s1, 6                         # jogamos o resultado para o fim
+            sw	$s3, shift		                  # salvamos na memória
+
+            li    $s2, mask_funct                     # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o funct
+            sw	$s1, funct		                  # salvamos na memória
+
+            li    $s2, mask_end16bits                 # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o endereco 16 bits
+            sw	$s1, end16bits		            # salvamos na memória
+
+            li    $s2, mask_end26bits                 # carregamos a marcara
+            and   $s1, $s0, $s2                       # usamos a mascara para pegar o endereco 26 bits
+            sw	$s1, end26bits		            # salvamos na memória
+
+            jr    $ra                                 # voltamos ao procedimento chamador
+            
 
