@@ -170,7 +170,7 @@ busca_instrucao:
             sw    $t3, contador		            # Salva valor do contador
             sw    $t4, pc		                  # Salva valor do contador
             j     busca_instrucao                     # pulamos para o procedimento
-                         
+          
 fecha_arquivos:
             li    $v0, servico_fecha_arquivo          # serviço 16: fecha um arquivo
             la    $t0, descritor_text                 # $t0 <- endereço do descritor do arquivo
@@ -248,7 +248,10 @@ salva_tipo_r:
 		syscall                                   # chamada ao sistema
             li	$t7, 'R'		                  # $t7 = "R"
             sb	$t7, tipo		                  # salva o tipo na memoria 
-            j fim_decodifica_tipo                     # finaliza
+            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
+            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
+            jal exec_tipo_r                           # executa a instrucao
+            j     fim_decodifica_tipo                 # finaliza
 
 salva_tipo_j:
             li    $v0, servico_imprime_string 
@@ -256,17 +259,32 @@ salva_tipo_j:
 		syscall                                   # chamada ao sistema
             li	$t7, 'J'		                  # $t7 = "J"
             sb	$t7, tipo		                  # salva o tipo na memoria 
-            j fim_decodifica_tipo                     # finaliza
+            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
+            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
+            jal exec_tipo_j                           # executa a instrucao
+            j     fim_decodifica_tipo                 # finaliza
 
 salva_tipo_i:
             li    $v0, servico_imprime_string 
 		la    $a0, msg_tipo                       # Mostra mensagem informando o tipo
 		syscall                                   # chamada ao sistema
             li	$t7, 'I'		                  # $t7 = "I"
-            sb	$t7, tipo		                  # salva o tipo na memoria 
+            sb	$t7, tipo		                  # salva o tipo na memoria
+            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
+            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno 
+            jal exec_tipo_i                           # executa a instrucao
 
 fim_decodifica_tipo:                                  # printa o tipo e finaliza
             li    $v0, servico_imprime_caracter 
 		move 	$a0, $t7		                  # Informa o tipo
 		syscall                                   # chamada ao sistema
-            jr    $ra                                 # voltamos ao procedimento chamador
+            lw	$ra, 0($sp)		                  # restaura valor do $ra           
+            addiu $sp, $sp, 4                         # restauramos a pilha   
+            jr    $ra                                 # retornamos ao procedimento chamador
+
+exec_tipo_i:
+            jr    $ra                                 # retornamos ao procedimento chamador
+exec_tipo_r:
+            jr    $ra                                 # retornamos ao procedimento chamador
+exec_tipo_j:
+            jr    $ra                                 # retornamos ao procedimento chamador
