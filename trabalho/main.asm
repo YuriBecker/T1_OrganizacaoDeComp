@@ -67,9 +67,7 @@ msg_arquivo_aberto:           .asciiz "\nArquivo aberto com sucesso! \n"
 msg_exec_instrucao1:          .asciiz "\nExecutando instrução no endereco -> "
 msg_exec_instrucao2:          .asciiz " - instrução  -> "
 msg_exec_instrucao3:          .asciiz " - OPCODE  -> "
-msg_tipo_r:                   .asciiz " - Instrucao do tipo R "
-msg_tipo_i:                   .asciiz " - Instrucao do tipo I "
-msg_tipo_j:                   .asciiz " - Instrucao do tipo J "
+msg_tipo:                     .asciiz " - Instrucao do tipo "
 
 # segmento de texto (programa)
 ###################################################################################################################
@@ -163,8 +161,8 @@ busca_instrucao:
             move 	$a0, $t5		                  # $a0 = instrucao = IR
             syscall                                   # imprimimos o caractere do instrucoes     
            
-            jal	decodifica				      # pula para decodifica e salva a prox posicao no $ra
-            jal   executa                             # pula para executa e salva a prox posicao no $ra                              
+            jal	decodifica_bin				# pula para decodifica_bin e salva a prox posicao no $ra
+            jal   decodifica_tipo                     # pula para decodifica_tipo e salva a prox posicao no $ra                              
             
             addi  $a1, $a1, 4                         # incrementa o endereco
             addi  $t3, $t3, 1                         # contador++
@@ -188,7 +186,7 @@ fim_programa:
 	    	li    $v0, servico_termina_programa       # fechamos o programa
 	   	syscall                                   # chamada ao sistema
 
-decodifica:                                           # decodificamos todos os posiveis cabeçalhos binários
+decodifica_bin:                                       # decodificamos todos os posiveis cabeçalhos binários
 		li    $v0, servico_imprime_string 
 		la    $a0, msg_exec_instrucao3            # Mostra mensagem informando o opcode
 		syscall                                   # chamada ao sistema 
@@ -237,34 +235,38 @@ decodifica:                                           # decodificamos todos os p
 
             jr    $ra                                 # voltamos ao procedimento chamador
             
-executa:                                              # executa a instrucao decodificada
+decodifica_tipo:                                      # descobre o tipo da instrucao
             lw	$t5, opcode		                  # carrega opcode             
             li	$t6, 3		                  # $t6 = 3
-            beq	$t5, $zero, tipo_r	            # verifica se é do tipo R
-            bgt	$t5, $t6, tipo_i	                  # verifica se é do tipo I
-            j	tipo_j				      # jump to tipo_j
+            beq	$t5, $zero, salva_tipo_r	      # verifica se é do tipo R
+            bgt	$t5, $t6, salva_tipo_i	            # verifica se é do tipo I
+            j	salva_tipo_j				# jump to salva_tipo_j
 
-tipo_r:
+salva_tipo_r:
             li    $v0, servico_imprime_string 
-		la    $a0, msg_tipo_r                     # Mostra mensagem informando o tipo
+		la    $a0, msg_tipo                       # Mostra mensagem informando o tipo
 		syscall                                   # chamada ao sistema
-            li	$t7, 'R'		                  # $t1 = "R"
+            li	$t7, 'R'		                  # $t7 = "R"
             sb	$t7, tipo		                  # salva o tipo na memoria 
-            j fim_executa                             # finaliza
+            j fim_decodifica_tipo                     # finaliza
 
-tipo_j:
+salva_tipo_j:
             li    $v0, servico_imprime_string 
-		la    $a0, msg_tipo_j                     # Mostra mensagem informando o tipo
+		la    $a0, msg_tipo                       # Mostra mensagem informando o tipo
 		syscall                                   # chamada ao sistema
-            li	$t7, 'J'		                  # $t1 = "J"
+            li	$t7, 'J'		                  # $t7 = "J"
             sb	$t7, tipo		                  # salva o tipo na memoria 
-            j fim_executa                             # finaliza
+            j fim_decodifica_tipo                     # finaliza
 
-tipo_i:
+salva_tipo_i:
             li    $v0, servico_imprime_string 
-		la    $a0, msg_tipo_i                     # Mostra mensagem informando o tipo
+		la    $a0, msg_tipo                       # Mostra mensagem informando o tipo
 		syscall                                   # chamada ao sistema
-            li	$t7, 'I'		                  # $t1 = "I"
+            li	$t7, 'I'		                  # $t7 = "I"
             sb	$t7, tipo		                  # salva o tipo na memoria 
-fim_executa:
+
+fim_decodifica_tipo:                                  # printa o tipo e finaliza
+            li    $v0, servico_imprime_caracter 
+		move 	$a0, $t7		                  # Informa o tipo
+		syscall                                   # chamada ao sistema
             jr    $ra                                 # voltamos ao procedimento chamador
