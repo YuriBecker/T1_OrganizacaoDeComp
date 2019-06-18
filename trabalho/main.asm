@@ -25,6 +25,8 @@
 .eqv  mask_end16bits                0x0000FFFF
 .eqv  mask_end26bits                0x03FFFFFF
 
+.eqv  tamanho_pilha                 50                # constante com o tamanho da pilha
+
 ####################################################################################################################
 # segmento de dados
 
@@ -44,8 +46,11 @@ qtd_instrucoes:         .word
 end_inicial_texto:      .word 0X00400000
 end_inicial_data:       .word 0X10010000
 
+# Registradores do processador falso
 pc: 		            .space 4                      # Guarda o endereco da instrucao
 ir: 		            .space 4                      # Guarda a instrucao
+registradores:          .space 128                    # vetor pra os registradores (32 * 4)
+pilha:                  .space 200                    # pilha virtual com espaço para 50 words
 
 # dados usados para salvar as informacoes do ir
 opcode: 		      .space 4
@@ -73,8 +78,17 @@ msg_tipo:                     .asciiz " - Instrucao do tipo "
 ###################################################################################################################
 .text
 main:
-		lw    $t0, end_inicial_texto
+		la    $t0, instrucoes
 		sw    $t0, pc                             # inicializa o valor de PC
+
+            la    $t0, pilha
+            li	$t2, 4		                  # $t2 = 4
+            li	$t3, tamanho_pilha		      #$t3 = tamanho_pilha
+            mul   $t1, $t2, $t3                       # tamanho da pilha * 4
+            add	$t4, $t0, $t1		            # $t4 = $t0 + $t1
+            la	$t0, registradores		      # pega o endereco dos registradores fakes
+            sw	$t4, 116($t0)		            # salva o endereço final da pilha fake no registrador fake na posição 29 = sp
+            
 		li    $v0, servico_imprime_string 
 		la    $a0, msg_qtd_intrucoes
 		syscall                                   # Mostra mensagem perguntando o numero de instrucoes
@@ -97,7 +111,7 @@ main:
             jal   leia_caracteres_arquivo			# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
             
             jal   fecha_arquivos                      # fecha os dois arquivos 
-		la    $a1, instrucoes				# passa o buffer de instrucoes
+		# la    $a1, instrucoes				# passa o buffer de instrucoes
             lw    $a2, qtd_instrucoes                 # passa o numero de instrucoes informado pelo usuario
 		j     busca_instrucao                     # pula para busca da instrucao 
 		
@@ -145,7 +159,7 @@ busca_instrucao:
            
             lw 	$t3, contador   				# carrega o contador
             lw    $t4, pc                             # carrega valor de pc
-            lw	$t5, 0($a1)		                  # busca instrucao
+            lw	$t5, 0($t4)		                  # busca instrucao
             sw	$t5, ir		                  # IR recebe a instrucao que sera executada          
             bgt 	$t3, $a2, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes 
 		li    $v0, servico_imprime_string 
@@ -164,7 +178,7 @@ busca_instrucao:
             jal	decodifica_bin				# pula para decodifica_bin e salva a prox posicao no $ra
             jal   decodifica_tipo                     # pula para decodifica_tipo e salva a prox posicao no $ra                              
             
-            addi  $a1, $a1, 4                         # incrementa o endereco
+            #addi  $a1, $a1, 4                         # incrementa o endereco
             addi  $t3, $t3, 1                         # contador++
             addi	$t4, $t4, 4			            # pc = pc + 4
             sw    $t3, contador		            # Salva valor do contador
@@ -283,8 +297,42 @@ fim_decodifica_tipo:                                  # printa o tipo e finaliza
             jr    $ra                                 # retornamos ao procedimento chamador
 
 exec_tipo_i:
+
             jr    $ra                                 # retornamos ao procedimento chamador
-exec_tipo_r:
-            jr    $ra                                 # retornamos ao procedimento chamador
+
 exec_tipo_j:
+
+            jr    $ra                                 # retornamos ao procedimento chamador
+
+exec_tipo_r:
+            lw	$t5, funct		                  # carrega valor de func 
+            li	$t6, 0X00000020 		            # $t6 = 0X00000020 
+            beq	$t5, $t6, exec_add	            # executa add
+            li	$t6, 0X00000021 		            # $t6 = 0X00000020 
+            beq	$t5, $t6, exec_addu	            # executa addu
+            li	$t6, 0X00000008 		            # $t6 = 0X00000020 
+            beq	$t5, $t6, exec_jr	                  # executa jr
+
+exec_add:                                             # rd = rs + rt
+            lw    $t5, rd		                  # $t5 = rd 
+            lw	$t6, rs		                  # $t6 = rs
+            lw	$t7, rt		                  # $t7 = rt
+# s0 = 16
+# zero = 0
+# a0 = 4
+# v0 = 2
+# t0 = 8
+# t1 = 9
+
+            j fim_exec
+
+exec_addu:
+
+            j fim_exec
+
+exec_jr:
+
+            j fim_exec
+
+fim_exec:
             jr    $ra                                 # retornamos ao procedimento chamador
