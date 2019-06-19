@@ -320,7 +320,7 @@ fim_decodifica_tipo:                                  # printa o tipo e finaliza
             jr    $ra                                 # retornamos ao procedimento chamador
 
 exec_tipo_syscall:
-            
+            # verificar tipo 10, 4 e 1
             jr    $ra                                 # retornamos ao procedimento chamador
 
 exec_tipo_i:
@@ -347,22 +347,32 @@ exec_tipo_i:
             li	$t1, 0X70		                  # $t1 = 0X70 / mul
             beq	$t0, $t1, exec_mul	            # if $t0 == $t1 then exec_mul
             
-            jr    $ra                                 # retornamos ao procedimento chamador
+            # jr    $ra                                 # retornamos ao procedimento chamador
 
 exec_tipo_j:
+            lw    $t0, opcode
+            
+            li	$t1, 0X03	                        # $t1 = 0X03 / jal
+            beq	$t0, $t1, exec_jal	            # if $t0 == $t1 then exec_jal
 
-            jr    $ra                                 # retornamos ao procedimento chamador
+            li	$t1, 0X02		                  # $t1 = 0X09 / addiu
+            beq	$t0, $t1, exec_j	                  # if $t0 == $t1 then exec_j
+
+            # jr    $ra                                 # retornamos ao procedimento chamador
 
 exec_tipo_r:
-            # lw	$t5, funct		                  # carrega valor de func 
-            # li	$t6, 0X00000020 		            # $t6 = 0X00000020 
-            # beq	$t5, $t6, exec_add	            # executa add
-            # li	$t6, 0X00000021 		            # $t6 = 0X00000020 
-            # beq	$t5, $t6, exec_addu	            # executa addu
-            # li	$t6, 0X00000008 		            # $t6 = 0X00000020 
-            # beq	$t5, $t6, exec_jr	                  # executa jr
-            jr    $ra                                 # retornamos ao procedimento chamador
+            lw	$t5, funct		                  # carrega valor de func 
+            
+            li	$t6, 0X00000020 		            # $t6 = 0X00000020 
+            beq	$t5, $t6, exec_add	            # executa add
+            li	$t6, 0X00000021 		            # $t6 = 0X00000020 
+            beq	$t5, $t6, exec_addu	            # executa addu
+            li	$t6, 0X00000008 		            # $t6 = 0X00000020 
+            beq	$t5, $t6, exec_jr	                  # executa jr
+            
+            # jr    $ra                                 # retornamos ao procedimento chamador
 
+# TIPO I
 exec_bne:                                             # executa bne
 
             j fim_exec
@@ -390,15 +400,25 @@ exec_mul:                                             # executa a multiplicaçã
 
             j fim_exec
 
-exec_add:                                             # rd = rs + rt
+# TIPO R
+exec_add:                                             # executa uma soma
 
             j fim_exec
 
-exec_addu:
+exec_addu:                                            # executa soma com unsigned
 
             j fim_exec
 
-exec_jr:
+exec_jr:                                              # executa jump register
+
+            j fim_exec
+
+#TIPO J
+exec_jal:                                             # executa um jump and link
+
+            j fim_exec
+
+exec_j:                                               # executa um jump
 
             j fim_exec
 
