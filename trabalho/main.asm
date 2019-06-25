@@ -95,7 +95,7 @@ main:
             # li	$t2, 4		                  # $t2 = 4
             # li	$t3, tamanho_pilha		      # $t3 = tamanho_pilha
             # mul   $t1, $t2, $t3                       # tamanho da pilha * 4
-            addiu	$t4, $t0, 200		            # $t4 = $t0 + 200
+            addi	$t4, $t0, 200		            # $t4 = $t0 + 200
             la	$t3, registradores		      # pega o endereco dos registradores simulados
             sw	$t4, 116($t3)		            # salva o endereço final da pilha simulada no registrador simulado na posição 29 = sp
             
@@ -312,14 +312,14 @@ salva_tipo_i:
             j     fim_decodifica_tipo                 # finaliza
 
 fim_decodifica_tipo:                                  # printa o tipo e finaliza
-            li    $v0, servico_imprime_caracter 
-		move 	$a0, $t7		                  # Informa o tipo
+            li          $v0, servico_imprime_caracter 
+		lb	      $a0, tipo		            # Informa o tipo
 		syscall                                   # chamada ao sistema
-            lw	$ra, 0($sp)		                  # restaura valor do $ra           
-            addiu $sp, $sp, 4                         # restauramos a pilha   
-            jr    $ra                                 # retornamos ao procedimento chamador
+            lw	      $ra, 0($sp)                   # restaura valor do $ra           
+            addiu       $sp, $sp, 4                   # restauramos a pilha   
+            jr          $ra                           # retornamos ao procedimento chamador
 
-exec_tipo_syscall:
+exec_tipo_syscall:                                    # 10, 1, 4, 11
             la		$t0, registradores		# cerrega endereço base dos registradores simulados
             lw          $a0, 16($t0)                  # carrega o conteudo de $a0 simulado       
             lw          $a1, 20($t0)                  # carrega o conteudo de $a1 simulado 
@@ -389,9 +389,8 @@ exec_bne:                                             # executa bne
    # Carrega valores da instrução
             lw          $t0, rt                       # carrega rt
             lw          $t1, rs                       # carrega rs
-            lw          $t2, val16bits                # carrega o imediato de 16bits
-            sll         $t2, $t2, 16 
-            sra         $t2, $t2, 16
+            # sll         $t2, $t2, 16 
+            # sra         $t2, $t2, 16
             la          $t3, registradores            # carrega enredeço base dos registradores
             sll         $t0, $t0, 2                   # rt * 4
             sll         $t1, $t1, 2                   # rs * 4
@@ -402,12 +401,11 @@ exec_bne:                                             # executa bne
             j           fim_exec                              # segue para próxima instrução
             
             registradores_diferentes:
-                  la          $t3, instrucoes               # carrega endereço base das instruções
-                  li          $t4, 0x00400000               # carrega endereço padrão das instruções no mips
-                  
-                  sub         $t2, $t2, $t4                 # calcula valor imediato - 0x00400000
-                  add         $t5, $t2, $t3                 # calcula a posição relativa da instrução no nosso .text simulado
-                  addi	      $t5, $t5, -4                  # $t5 = 5 + -1
+                  lw          $t2, val16bits                # carrega o imediato de 16bits
+                  sll         $t2, $t2, 2                   # offset * 4
+                  lw		$t3, pc		            # carrega o pc simulado
+                  add		$t3, $t3, $t2		      # $t3 = $t3 + $t2
+                  # addi	      $t5, $t3, -4                  # $t5 = 5 + -1
                   sw          $t5, pc                       # salva o endereço da instrução no pc simulado
                   j           fim_exec                      # segue para próxima instrução
 
@@ -471,14 +469,13 @@ exec_lw:                                              # executa o load word
             lw		$t1, rt		            # carrega rt
             sll         $t1, $t1, 2                   # $t1 * 4
             add		$t1, $t1, $t0		      # $t1 = endereço do regitrador simulado 
-            
-            lw		$t2, rs		            # carrega o endereco
             lw          $t3, val16bits                # carrega o offset
-            
-            add		$t2, $t2, $t3		      # $t2 = endereço + offset
+            lw		$t2, rs		            # carrega o endereco
+            sll         $t2, $t2, 2                   # $t2 * 4
+            add		$t2, $t2, $t0		      # $t2 = endereço + offset
+            lw		$t4, 0($t2)		            # 
+            add		$t2, $t3, $t4		      # $t2 = endereço + offset            
             lw		$t3, 0($t2)		            # busca na memoria  
-            
-
             sw		$t3, 0($t1)		            # guarda o valor no registrador simulado 
             
             j           fim_exec
@@ -489,17 +486,13 @@ exec_sw:                                              # executa o save word
             sll         $t1, $t1, 2                   # num do registrador * 4
             add		$t1, $t1, $t0		      # $t1 = endereço na memoria do registrador simulado
             lw		$t2, 0($t1)		            # carrega o conteudo do registrador 
-            
-            
             lw		$t3, rs		            # carrega rs
             sll         $t3, $t3, 2                   # num do registrador * 4
             add		$t3, $t3, $t0		      # $t3 = endereço na memoria do registrador simulado
+            lw		$t3, 0($t3)		            # 
             lw          $t4, val16bits                # carrega o  offset
-
             add		$t5, $t3, $t4		      # endereço + offset
-            
             sw		$t2, 0($t5)		            # salva na memória 
-
             j           fim_exec
 
 # TIPO R
@@ -561,17 +554,17 @@ exec_mul:                                             # executa a multiplicaçã
             j           fim_exec           
 #TIPO J
 exec_jal:                                             # executa um jump and link
-            li          $t0, end_inicial_texto        # $t0 recebe 0x00400000
+            la		$t2, instrucoes		      # carrega endereço base das instrucoes
             lw		$t1, val26bits		      # carrega o endereço
-            la		$t2, registradores		# cerrega endereço base dos registradores simulados
-            sub		$t3, $t1, $t0	      	# $t3 = valor imediato de 26 bits - 0x0040000
+            subi	      $t3, $t1, 0X00100000          # valor imediato de 26 bits - 0X00100000  
+            sll         $t3, $t3, 2                   # registrador * 4
             add		$t4, $t2, $t3		      # soma base + deslocamento
-            addiu	      $t4, $t4, -4			# $t4 = endereço - 4 (POr causa do incremento do pc no loop)
-            la          $t5, pc                       # carrega o endereço do pc simulado
+            addi	      $t4, $t4, -4			# $t4 = endereço - 4 (Por causa do incremento do pc no loop)
+            lw          $t5, pc                       # carrega o endereço do pc simulado
             addi        $t5, $t5, 4                   # calculo endereço da próxima instrução
-            sw          $t5, 124($t2)                 # salva no ra simulado o valor de pc + 4
+            la		$t6, registradores	      # carrega endereço base dos registradores simulados
+            sw          $t5, 124($t6)                 # salva no ra simulado o valor de pc + 4
             sw          $t4, pc                       # salva o endereço no pc simulado
-            
             j           fim_exec
 
 exec_j:                                               # executa um jump
