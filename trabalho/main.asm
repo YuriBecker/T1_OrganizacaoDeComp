@@ -521,10 +521,15 @@ exec_addu:                                            # executa soma com unsigne
             lw		$t3, rd		            # carrega registrador de destino
             sll         $t5, $t3, 2                   # registrador * 4
             la		$t4, registradores		# carrega endereço base dos registradores
-            add		$t3, $t4, $t5                 # soma end base + deslocamento
-            lw		$t6, 0($t1)		            # carrega valor do registrador 
-            lw		$t7, 0($t2)		            # carrega valor do registrador
-            addu		$t0, $t6, $t7		      # $t0 = $t6 + $t7 
+            
+            add		$t1, $t1, $t4		      # $t1 = $t1 + $t4
+            add		$t2, $t2, $t4		      # $t2 = $t2 + $t4
+            add		$t3, $t3, $t4		      # $t3 = $t3 + $t4
+            
+            lw		$t1, 0($t1)		            # carrega valor do registrador 
+            lw		$t2, 0($t2)		            # carrega valor do registrador
+                 
+            addu		$t0, $t1, $t2		      # $t0 = $t1 + $t2 
             sw		$t0, 0($t3)		            # salva a soma no vetor de registradores 
            
             j            fim_exec
@@ -545,9 +550,12 @@ exec_mul:                                             # executa a multiplicaçã
             lw		$t2, rs		            # carrega valor a ser multiplicado
             sll         $t2, $t2, 2                   # registrador * 4
             lw		$t3, rd		            # carrega registrador de destino
+            sll         $t3, $t3, 2                   # registrador * 4
             la		$t4, registradores		# carrega endereço base dos registradores
-            sll         $t5, $t3, 2                   # registrador * 4
-            add		$t3, $t4, $t5                 # soma end base + deslocamento
+   
+            add		$t1, $t1, $t4                 # soma end base + deslocamento
+            add		$t2, $t2, $t4                 # soma end base + deslocamento
+            add		$t3, $t3, $t4                 # soma end base + deslocamento
             lw		$t6, 0($t1)		            # carrega valor do registrador 
             lw		$t7, 0($t2)		            # carrega valor do registrador
             mul		$t0, $t6, $t7		      # $t0 = $t6 * $t7 
