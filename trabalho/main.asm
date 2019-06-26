@@ -258,25 +258,27 @@ decodifica_bin:                                       # decodificamos todos os p
             jr    $ra                                 # voltamos ao procedimento chamador
             
 decodifica_tipo:                                      # descobre o tipo da instrucao
-            lw	$t5, opcode		                  # carrega opcode             
-            lw    $t4, funct                          # carrega funct    
+            lw	$t3, ir		                  # carrega a instrução
+            lw    $t4, funct                          # carrega o funct    
+            lw	$t5, opcode		                  # carrega o opcode             
+            
             li	$t6, 3		                  # $t6 = 3
-            # li	$t1, 0X0000000C		            # $t1 = 0X0000000C
-            # beq	$t4, $t1, salva_tipo_syscall	      # verifica se é uma syscall
+            li	$t1, 0X0000000C		            # $t1 = 0X0000000C
+            beq	$t3, $t1, salva_tipo_syscall	      # verifica se é uma syscall
             beq	$t5, $zero, salva_tipo_r	      # verifica se é do tipo R
             bgt	$t5, $t6, salva_tipo_i	            # verifica se é do tipo I
             j	salva_tipo_j				# é do tipo J
 
-# salva_tipo_syscall:
-#             li    $v0, servico_imprime_string 
-# 		la    $a0, msg_tipo                       # Mostra mensagem informando o tipo
-# 		syscall                                   # chamada ao sistema
-#             li	$t7, 'S'		                  # $t7 = "S"
-#             sb	$t7, tipo		                  # salva o tipo na memoria 
-#             addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
-#             sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
-#             jal   exec_tipo_syscall                   # executa a instrucao
-#             j     fim_decodifica_tipo                 # finaliza
+salva_tipo_syscall:
+            li    $v0, servico_imprime_string 
+		la    $a0, msg_tipo                       # Mostra mensagem informando o tipo
+		syscall                                   # chamada ao sistema
+            li	$t7, 'S'		                  # $t7 = "S"
+            sb	$t7, tipo		                  # salva o tipo na memoria 
+            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
+            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
+            jal   exec_syscall                        # executa a instrucao
+            j     fim_decodifica_tipo                 # finaliza
 
 salva_tipo_r:
             li    $v0, servico_imprime_string 
@@ -361,17 +363,18 @@ exec_tipo_j:
 
 exec_tipo_r:
             lw	$t5, funct		                  # carrega valor de func 
-            
-            li	$t6, 0X0000000C		            # $t1 = 0X0000000C
-            beq	$t5, $t6, exec_syscall	            # executa uma syscall
+            lw	$t4, opcode		                  # carrega o opcode 
+                        
+            li	$t6, 0X0000001c 		            # $t6 = 0X0000001c 
+            beq	$t4, $t6, exec_mul                  # executa mul
+            # li	$t6, 0X0000000C		            # $t1 = 0X0000000C
+            # beq	$t5, $t6, exec_syscall	            # executa uma syscall
             li	$t6, 0X00000020 		            # $t6 = 0X00000020 
             beq	$t5, $t6, exec_add	            # executa add
             li	$t6, 0X00000021 		            # $t6 = 0X00000020 
             beq	$t5, $t6, exec_addu	            # executa addu
             li	$t6, 0X00000008 		            # $t6 = 0X00000020 
             beq	$t5, $t6, exec_jr	                  # executa jr
-            li	$t6, 0X0000001c 		            # $t6 = 0X0000001c 
-            beq	$t5, $t6, exec_mul                 # executa mul
             # jr    $ra                                 # retornamos ao procedimento chamador
 
 # TIPO I
@@ -584,7 +587,6 @@ exec_j:                                               # executa um jump
             sll         $t1, $t1, 2                   # registrador * 4
             la		$t2, instrucoes		      # carrega endereço base das instrucoes
             
-            la		$t2, registradores		# carrega endereço base dos registradores simulados
             add		$t4, $t2, $t1		      # soma base + deslocamento
             addiu	      $t4, $t4, -4			# $t4 = endereço - 4 (POr causa do incremento do pc no loop)
             sw          $t4, pc                       # pc recebe o endereco da instrução
