@@ -406,7 +406,7 @@ exec_bne:                                             # executa bne
                   lw		$t3, pc		            # carrega o pc simulado
                   add		$t3, $t3, $t2		      # $t3 = $t3 + $t2
                   # addi	      $t5, $t3, -4                  # $t5 = 5 + -1
-                  sw          $t5, pc                       # salva o endereço da instrução no pc simulado
+                  sw          $t3, pc                       # salva o endereço da instrução no pc simulado
                   j           fim_exec                      # segue para próxima instrução
 
 exec_addiu:                                           # executa o addiu
@@ -454,12 +454,14 @@ exec_lui:                                             # executa o load upper imm
 exec_ori:                                             # executa bitwise OR immediate
             lw		$t0, rt		            # carrega registrador target 
             sll         $t0, $t0, 2                   # registrador * 4
+            
             la		$t4, registradores		# carrega endereço base dos registradores 
             add		$t5, $t4, $t0		      # $t5 = $t4 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
             lw		$t1, rs		            # t1 = rs
             lw		$t2, val16bits		      # t2 = valor de 16 bits 
-            # sll         $t2, $t2, 16 
-            # sra         $t2, $t2, 16
+            la		$t4, data 
+            andi        $t4, $t4, 0X0000FFFF		# 
+            add		$t2, $t2, $t4		      # 
             or          $t3, $t1, $t2
             sw		$t3, 0($t5)		            # 
             j           fim_exec
