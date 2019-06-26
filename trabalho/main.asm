@@ -579,11 +579,13 @@ exec_jal:                                             # executa um jump and link
             j           fim_exec
 
 exec_j:                                               # executa um jump
-            li          $t0, end_inicial_texto        # $t0 recebe 0x00400000
             lw		$t1, val26bits		      # carrega o endereço
-            la		$t2, registradores		# cerrega endereço base dos registradores simulados
-            sub		$t3, $t1, $t0	      	# $t3 = valor imediato de 26 bits - 0x0040000
-            add		$t4, $t2, $t3		      # soma base + deslocamento
+            subi	      $t1, $t1, 0X00100000          # valor imediato de 26 bits - 0X00100000  
+            sll         $t1, $t1, 2                   # registrador * 4
+            la		$t2, instrucoes		      # carrega endereço base das instrucoes
+            
+            la		$t2, registradores		# carrega endereço base dos registradores simulados
+            add		$t4, $t2, $t1		      # soma base + deslocamento
             addiu	      $t4, $t4, -4			# $t4 = endereço - 4 (POr causa do incremento do pc no loop)
             sw          $t4, pc                       # pc recebe o endereco da instrução
             
