@@ -76,11 +76,13 @@ contador:               .word 1                       # <- Contador do loop / nu
 tipo:                   .space 1                      # <- Tipo da instrucao
 
 # strings de mensagens para o usuario
-msg_qtd_intrucoes:            .asciiz "Numero de instrucoes que serão executadas (Max 48): "
+msg_qtd_intrucoes:            .asciiz "Numero de instrucoes que serão executadas (Max 98): "
 msg_arquivo_nao_foi_aberto:   .asciiz "\nArquivo nao pode ser aberto \n"
 msg_arquivo_aberto:           .asciiz "Arquivo aberto com sucesso! \n" 
 msg_output:                   .asciiz "\nOutput do simulador:  "
-
+msg_registrador:              .asciiz "\nRegistrador simulado número "
+msg_seta:                     .asciiz " --> "
+quebra_linha:                 .asciiz "\n"
 
 # segmento de texto (programa)
 ###################################################################################################################
@@ -199,19 +201,11 @@ fim_programa:
 	   	syscall                                   # chamada ao sistema
 
 decodifica_bin:                                       # decodificamos todos os posiveis cabeçalhos binários
-		# li    $v0, servico_imprime_string 
-		# la    $a0, msg_exec_instrucao3            # Mostra mensagem informando o opcode
-		# syscall                                   # chamada ao sistema 
-		
             lw	$s0, ir                             # carregamos instrução
             li    $s2, mask_opcode                    # carregamos a marcara
             and   $s1, $s0, $s2                       # usamos a mascara para pegar o opcode
             srl	$s3, $s1, 26                        # jogamos o resultado para o final 
             sw	$s3, opcode		                  # salvamos na memória
-
-            # li    $v0, servico_imprime_hexa
-		# move  $a0, $s3                            # Mostra mensagem informando o endereco
-		# syscall                                   # chamada ao sistema
 
             li    $s2, mask_rs                        # carregamos a marcara
             and   $s1, $s0, $s2                       # usamos a mascara para pegar o rs
@@ -534,22 +528,53 @@ exec_syscall:                                         # 10, 1, 4, 11
             lw          $a0, 16($t0)                  # carrega o conteudo de $a0 simulado       
             lw          $a1, 20($t0)                  # carrega o conteudo de $a1 simulado 
             lw          $a2, 24($t0)                  # carrega o conteudo de $a2 simulado 
-            lw          $v0, 8($t0)                  # carrega o conteudo de $v0 simulado
+            lw          $v0, 8($t0)                   # carrega o conteudo de $v0 simulado
             
             li		$t1, 10		            # $t1 = 10
             beq		$v0, $t1, printa_regs	      # if $v0 == $t1 then target
             
             syscall
             
-            sw          $v0, 8($t0)                  # carrega o conteudo de $v0 simulado
+            sw          $v0, 8($t0)                   # carrega o conteudo de $v0 simulado
             sw          $a0, 16($t0)                  # carrega o conteudo de $a0 simulado       
 
             j           fim_exec           
 
 printa_regs:      
 
+            li	      $s0, 0
+            
+printa:            
+            li		$t3, 128		            # $t3 = 128
+            beq		$s0, $t3, exit	
+            
+            li          $v0, servico_imprime_string 
+		la          $a0, msg_registrador          # Mostra mensagem informando o endereco
+		syscall                                   # chamada ao sistema            
+            
+            li		$t1, 4 		            #    
+            div		$s0, $t1			      #       
+            mflo	      $t1                           # 
+             
+            li          $v0, servico_imprime_int 
+		move 	      $a0, $t1		            # $a0 = $01
+            syscall
 
+            li          $v0, servico_imprime_string 
+		la          $a0, msg_seta                 # Mostra mensagem informando o endereco
+		syscall                                   # chamada ao sistema        
 
+            li          $v0, servico_imprime_int 
+		la		$t4, registradores		# 
+            add		$s2, $t4, $s0		      # $s2 = $t1 + $t2
+            lw		$a0, 0($s2)		# 
+            syscall
+
+            addi	      $s0, $s0, 4			      
+            j printa
+
+exit:
+            li          $v0, servico_termina_programa
             syscall
 
 #TIPO J
