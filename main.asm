@@ -88,192 +88,193 @@ quebra_linha:                 .asciiz "\n"
 ###################################################################################################################
 .text
 main:
-		la    $t0, instrucoes
-		sw    $t0, pc                             # inicializa o valor de PC com o endereço da primeira instrução
-            la    $t0, pilha                          # $t0 = endereço da pilha
-            addi	$t4, $t0, 200		            # $t4 = end pilha + 200 (tamanho total)
-            la	$t3, registradores		      # carrega o endereco dos registradores simulados
-            sw	$t4, 116($t3)		            # salva o endereço final da pilha simulada no registrador simulado na posição 29 ($sp)
+		la          $t0, instrucoes               # carrega o endereço da primeira instrução
+		sw          $t0, pc                       # inicializa o valor de PC com o endereço da primeira instrução
+            la          $t0, pilha                    # $t0 = endereço da pilha
+            addi	      $t4, $t0, 200		      # $t4 = end pilha + 200 (tamanho total)
+            la	      $t3, registradores		# carrega o endereco dos registradores simulados
+            sw	      $t4, 116($t3)		      # salva o endereço final da pilha simulada no registrador simulado na posição 29 ($sp)
             
-		li    $v0, servico_imprime_string 
-		la    $a0, msg_qtd_intrucoes
+		li          $v0, servico_imprime_string 
+		la          $a0, msg_qtd_intrucoes
 		syscall                                   # Mostra mensagem perguntando o numero de instrucoes
-		li    $v0, servico_le_input  
+		li          $v0, servico_le_input  
 		syscall                                   # le input do teclado
-		sw    $v0, qtd_instrucoes                 # salva valorm informado pelo usuario
+		sw          $v0, qtd_instrucoes           # salva valorm informado pelo usuario
 	         
-            la    $a0, nome_arquivo_data 
-            la    $a1, descritor_data
-            jal   abre_arquivo                        # abrimos o arquivo data.bin para a leitura  
-		lw    $a0, descritor_data                 # $a0 <- o valor do descritor do arquivo
-            la    $a1, data                           # $a1 <- endereço do instrucoes que guarda os carcateres lidos
-            jal   leia_caracteres_arquivo		      # pula para leia_caracteres_arquivo e salva a prox posicao no $ra
-            
-            la    $a0, nome_arquivo_text 
-            la    $a1, descritor_text
-            jal   abre_arquivo                        # abrimos o arquivo text.bin para a leitura
-		lw    $a0, descritor_text                 # $a0 <- o valor do descritor do arquivo
-            la    $a1, instrucoes                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
-            jal   leia_caracteres_arquivo			# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
-            
-            jal   fecha_arquivos                      # fecha os dois arquivos 
-		            
-            li    $v0, servico_imprime_string 
-		la    $a0, msg_output                     # Mostra mensagem informando o output do processador q será simulado
+            la          $a0, nome_arquivo_data 
+            la          $a1, descritor_data
+            jal         abre_arquivo                  # abrimos o arquivo data.bin para a leitura  
+		lw          $a0, descritor_data           # $a0 <- o valor do descritor do arquivo
+            la          $a1, data                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+            jal         leia_caracteres_arquivo		# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
+
+            la          $a0, nome_arquivo_text 
+            la          $a1, descritor_text
+            jal         abre_arquivo                  # abrimos o arquivo text.bin para a leitura
+		lw          $a0, descritor_text           # $a0 <- o valor do descritor do arquivo
+            la          $a1, instrucoes               # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+            jal         leia_caracteres_arquivo		# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
+
+            jal         fecha_arquivos                # fecha os dois arquivos 
+      
+            li          $v0, servico_imprime_string 
+		la          $a0, msg_output               # Mostra mensagem informando o output do processador q será simulado
 		syscall                                   # chamada ao sistema
 
-            j     busca_instrucao                     # pula para busca da instrucao 
+            j           busca_instrucao               # pula para busca da instrucao 
 		
 # lemos o arquivo e colocamos na memória
 leia_caracteres_arquivo:
-            li    $v0, servico_leia_arquivo           # serviço 14: leitura do arquivo
-            li    $a2, 4096                           # $a2 <- número máximo de carcateres lidos
+            li          $v0, servico_leia_arquivo     # serviço 14: leitura do arquivo
+            li          $a2, 4096                     # $a2 <- número máximo de carcateres lidos
             syscall                                   # fazemos a leitura de caracateres do arquivo para o instrucoes
-            move  $s0, $v0                            # armazenamos o número de caracteres lidos em $s0
-            move  $s1, $a1                            # armazenamos o endereço das instrucoes em $s1                                     
-            jr    $ra 						#retorna para o procedimento chamador 
+            move        $s0, $v0                      # armazenamos o número de caracteres lidos em $s0
+            move        $s1, $a1                      # armazenamos o endereço das instrucoes em $s1                                     
+            jr          $ra 					# retorna para o procedimento chamador 
             
 arquivo_aberto_com_sucesso:
-            la    $t0, descritor_text                 # $t0 <- endereço da variável descritor_arquivo
-            sw    $v0, 0($t0)                         # armazenamos na variável descritor_arquivo seu valor
+            la          $t0, descritor_text           # $t0 <- endereço da variável descritor_arquivo
+            sw          $v0, 0($t0)                   # armazenamos na variável descritor_arquivo seu valor
 
 abre_arquivo:
-            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
-            sw    $a1, 0($sp)                         # guardamos na pilha o endereço da variável descritor do arquivo
-            li    $v0, servico_abre_arquivo           # serviço 13: abre um arquivo
-            li    $a1, 0                              # $a1 <- 0: arquivo será aberto para leitura
-            li    $a2, 0                              # modo não é usado. Use o valor 0.
+            addiu       $sp, $sp, -4                  # será adicionado um elemento na pilha
+            sw          $a1, 0($sp)                   # guardamos na pilha o endereço da variável descritor do arquivo
+            li          $v0, servico_abre_arquivo     # serviço 13: abre um arquivo
+            li          $a1, 0                        # $a1 <- 0: arquivo será aberto para leitura
+            li          $a2, 0                        # modo não é usado. Use o valor 0.
             syscall                                   # abre o arquivo
 
-            lw    $a1, 0($sp)                         # carregamos o endereço da variável com o descritor do arquivo
-            sw    $v0, 0($a1)                         # armazenamos o descritor do arquivo em descritor_arquivo
-            slt   $t0, $v0, $zero                     # $t0 = 1 se $v0 < 0 ($v0 negativo)
-            bne   $t0, $zero, arquivo_nao_foi_aberto  # se $v0 é negativo, o arquivo não pode ser aberto
-            j     arquivo_foi_aberto                  # pula para o procedimento 
+            lw          $a1, 0($sp)                   # carregamos o endereço da variável com o descritor do arquivo
+            sw          $v0, 0($a1)                   # armazenamos o descritor do arquivo em descritor_arquivo
+            slt         $t0, $v0, $zero               # $t0 = 1 se $v0 < 0 ($v0 negativo)
+            bne         $t0, $zero, arquivo_nao_foi_aberto  # se $v0 é negativo, o arquivo não pode ser aberto
+            j           arquivo_foi_aberto            # pula para o procedimento 
 
 arquivo_nao_foi_aberto:
-            li    $v0, servico_imprime_string         # serviço 4: imprime uma string
-            la    $a0, msg_arquivo_nao_foi_aberto     # $a0 armazena o endereço da string a ser apresentada
+            li          $v0, servico_imprime_string   # serviço 4: imprime uma string
+            la          $a0, msg_arquivo_nao_foi_aberto     # $a0 armazena o endereço da string a ser apresentada
             syscall                                   # apresenta a string
-            j     fim_programa                        # termina o programa
+            j           fim_programa                  # termina o programa
 
 arquivo_foi_aberto:
-            li    $v0, servico_imprime_string         # serviço 4: imprime uma string
-            la    $a0, msg_arquivo_aberto             # $a0 possui o endereço da string a ser apresentada
+            li          $v0, servico_imprime_string   # serviço 4: imprime uma string
+            la          $a0, msg_arquivo_aberto       # $a0 possui o endereço da string a ser apresentada
             syscall                                   # apresenta a string
-            addiu $sp, $sp, 4                         # restauramos a pilha   
-            jr    $ra                                 # retornamos ao procedimento chamador 
+            addiu       $sp, $sp, 4                   # restauramos a pilha   
+            jr          $ra                           # retornamos ao procedimento chamador 
 
 busca_instrucao:                                  
-            lw 	$t3, contador   				# carrega o contador
-            lw    $t4, pc                             # carrega valor de pc
-            lw	$t5, 0($t4)		                  # busca instrucao
-            sw	$t5, ir		                  # IR recebe a instrucao que sera executada   
-            lw    $t2, qtd_instrucoes                 # passa o numero de instrucoes informado pelo usuario       
-            bgt 	$t3, $t2, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes solicitada pelo usuário 
+            lw 	      $t3, contador   			# carrega o contador
+            lw          $t4, pc                       # carrega valor de pc
+            lw	      $t5, 0($t4)		            # busca instrucao
+            sw	      $t5, ir		            # IR recebe a instrucao que sera executada   
+            lw          $t2, qtd_instrucoes           # passa o numero de instrucoes informado pelo usuario       
+            bgt 	      $t3, $t2, fim_programa        # Verifica se ja mostrou a quantidade de instrucoes solicitada pelo usuário 
 		           
-            jal	decodifica_bin				# pula para decodifica_bin e salva a prox instrução no $ra
-            jal   decodifica_tipo                     # pula para decodifica_tipo e salva a prox instrução no $ra                              
+            jal	      decodifica_bin			# pula para decodifica_bin e salva a prox instrução no $ra
+            jal         decodifica_tipo               # pula para decodifica_tipo e salva a prox instrução no $ra                              
             
-            lw 	$t3, contador   				# carrega o contador
-            lw    $t4, pc                             # carrega valor de pc
-            addi  $t3, $t3, 1                         # contador++
-            addi	$t4, $t4, 4			            # pc = pc + 4
-            sw    $t3, contador		            # Salva valor do contador
-            sw    $t4, pc		                  # Salva valor do pc
-            j     busca_instrucao                     # pulamos para o procedimento busca_instrução
+            lw 	      $t3, contador   			# carrega o contador
+            lw          $t4, pc                       # carrega valor de pc
+            addi        $t3, $t3, 1                   # contador++
+            addi	      $t4, $t4, 4			      # pc = pc + 4
+            sw          $t3, contador		      # Salva valor do contador
+            sw          $t4, pc		            # Salva valor do pc
+            j           busca_instrucao               # pulamos para o procedimento busca_instrução
 
 fecha_arquivos:
-            li    $v0, servico_fecha_arquivo          # serviço 16: fecha um arquivo
-            la    $t0, descritor_text                 # $t0 <- endereço do descritor do arquivo
-            lw    $a0, 0($t0)                         # carregamos em $a0 o descritor do arquivo
+            li          $v0, servico_fecha_arquivo    # serviço 16: fecha um arquivo
+            la          $t0, descritor_text           # $t0 <- endereço do descritor do arquivo
+            lw          $a0, 0($t0)                   # carregamos em $a0 o descritor do arquivo
             syscall                                   # fechamos o arquivo
-            li    $v0, servico_fecha_arquivo          # serviço 16: fecha um arquivo
-            la    $t0, descritor_data                 # $t0 <- endereço do descritor do arquivo
-            lw    $a0, 0($t0)                         # carregamos em $a0 o descritor do arquivo
+            li          $v0, servico_fecha_arquivo    # serviço 16: fecha um arquivo
+            la          $t0, descritor_data           # $t0 <- endereço do descritor do arquivo
+            lw          $a0, 0($t0)                   # carregamos em $a0 o descritor do arquivo
             syscall                                   # fechamos o arquivo
-            jr    $ra                                 # voltamos ao procedimento chamador
+            jr          $ra                           # voltamos ao procedimento chamador
 
 fim_programa:
-	    	li    $v0, servico_termina_programa       # código para fechar o programa
+	    	li          $v0, servico_termina_programa # código para fechar o programa
 	   	syscall                                   # chamada ao sistema
 
 decodifica_bin:                                       # decodificamos todos os posiveis cabeçalhos binários
-            lw	$s0, ir                             # carregamos instrução
-            li    $s2, mask_opcode                    # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o opcode
-            srl	$s3, $s1, 26                        # jogamos o resultado para o final 
-            sw	$s3, opcode		                  # salvamos na memória
-
-            li    $s2, mask_rs                        # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o rs
-            srl	$s3, $s1, 21                        # jogamos o resultado para o fim
-            sw	$s3, rs		                  # salvamos na memória
-
-            li    $s2, mask_rt                        # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o rt
-            srl	$s3, $s1, 16                        # jogamos o resultado para o fim
-            sw	$s3, rt		                  # salvamos na memória
-
-            li    $s2, mask_rd                        # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o rd
-            srl	$s3, $s1, 11                        # jogamos o resultado para o fim
-            sw	$s3, rd		                  # salvamos na memória
-
-            li    $s2, mask_shift                     # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o shift
-            srl	$s3, $s1, 6                         # jogamos o resultado para o fim
-            sw	$s3, shift		                  # salvamos na memória
-
-            li    $s2, mask_funct                     # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o funct
-            sw	$s1, funct		                  # salvamos na memória
-
-            li    $s2, mask_val16bits                 # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o endereco 16 bits
-            sw	$s1, val16bits		            # salvamos na memória
-
-            li    $s2, mask_val26bits                 # carregamos a marcara
-            and   $s1, $s0, $s2                       # usamos a mascara para pegar o endereco 26 bits
-            sw	$s1, val26bits		            # salvamos na memória
-
-            jr    $ra                                 # voltamos ao procedimento chamador
+            lw	      $s0, ir                       # carregamos instrução
+            li          $s2, mask_opcode              # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o opcode
+            srl	      $s3, $s1, 26                  # jogamos o resultado para o final 
+            sw	      $s3, opcode		            # salvamos na memória
+      
+            li          $s2, mask_rs                  # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o rs
+            srl	      $s3, $s1, 21                  # jogamos o resultado para o fim
+            sw	      $s3, rs		            # salvamos na memória
+      
+            li          $s2, mask_rt                  # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o rt
+            srl	      $s3, $s1, 16                  # jogamos o resultado para o fim
+            sw	      $s3, rt		            # salvamos na memória
+      
+            li          $s2, mask_rd                  # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o rd
+            srl	      $s3, $s1, 11                  # jogamos o resultado para o fim
+            sw	      $s3, rd		            # salvamos na memória
+      
+            li          $s2, mask_shift               # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o shift
+            srl	      $s3, $s1, 6                   # jogamos o resultado para o fim
+            sw	      $s3, shift		            # salvamos na memória
+      
+            li          $s2, mask_funct               # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o funct
+            sw	      $s1, funct		            # salvamos na memória
+      
+            li          $s2, mask_val16bits           # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o endereco 16 bits
+            sw	      $s1, val16bits		      # salvamos na memória
+      
+            li          $s2, mask_val26bits           # carregamos a marcara
+            and         $s1, $s0, $s2                 # usamos a mascara para pegar o endereco 26 bits
+            sw	      $s1, val26bits		      # salvamos na memória
+      
+            jr          $ra                           # voltamos ao procedimento chamador
             
 decodifica_tipo:                                      # decodifica o tipo da instrucao
-            lw	$t3, ir		                  # carrega a instrução
-            lw    $t4, funct                          # carrega o funct    
-            lw	$t5, opcode		                  # carrega o opcode             
+            lw	      $t3, ir		            # carrega a instrução
+            lw          $t4, funct                    # carrega o funct    
+            lw	      $t5, opcode		            # carrega o opcode             
             
-            li	$t6, 3		                  # $t6 = 3
-            li	$t1, 0X0000000C		            # $t1 = 0X0000000C (valor para identificação de uma syscall)
-            beq	$t3, $t1, tipo_syscall	      # verifica se é uma syscall
-            beq	$t5, $zero, tipo_r	      # verifica se é do tipo R
-            bgt	$t5, $t6, tipo_i	            # verifica se é do tipo I
-            j	tipo_j				# é do tipo J
+            li	      $t6, 3		            # $t6 = 3
+            li	      $t1, 0X0000000C		      # $t1 = 0X0000000C (valor para identificação de uma syscall)
+            
+            beq	      $t3, $t1, tipo_syscall	      # verifica se é uma syscall
+            beq	      $t5, $zero, tipo_r	      # verifica se é do tipo R
+            bgt	      $t5, $t6, tipo_i	            # verifica se é do tipo I
+            j	      tipo_j				# é do tipo J
 
 tipo_syscall:
-            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
-            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
-            jal   exec_syscall                        # executa a instrucao
-            j     fim_decodifica_tipo                 # finaliza
+            addiu       $sp, $sp, -4                  # será adicionado um elemento na pilha
+            sw          $ra, 0($sp)                   # guardamos na pilha o endereço de retorno
+            jal         exec_syscall                  # executa a instrucao
+            j           fim_decodifica_tipo           # finaliza
 
 tipo_r:
-            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
-            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
-            jal   exec_tipo_r                         # executa a instrucao
-            j     fim_decodifica_tipo                 # finaliza
+            addiu       $sp, $sp, -4                  # será adicionado um elemento na pilha
+            sw          $ra, 0($sp)                   # guardamos na pilha o endereço de retorno
+            jal         exec_tipo_r                   # executa a instrucao
+            j           fim_decodifica_tipo           # finaliza
 
 tipo_j:
-            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
-            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
-            jal   exec_tipo_j                         # executa a instrucao
-            j     fim_decodifica_tipo                 # finaliza
+            addiu       $sp, $sp, -4                  # será adicionado um elemento na pilha
+            sw          $ra, 0($sp)                   # guardamos na pilha o endereço de retorno
+            jal         exec_tipo_j                   # executa a instrucao
+            j           fim_decodifica_tipo           # finaliza
 
 tipo_i:
-            addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
-            sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno 
-            jal   exec_tipo_i                         # executa a instrucao
-            j     fim_decodifica_tipo                 # finaliza
+            addiu       $sp, $sp, -4                  # será adicionado um elemento na pilha
+            sw          $ra, 0($sp)                   # guardamos na pilha o endereço de retorno 
+            jal         exec_tipo_i                   # executa a instrucao
+            j           fim_decodifica_tipo           # finaliza
 
 fim_decodifica_tipo:                                  # printa o tipo e finaliza
             lw	      $ra, 0($sp)                   # restaura valor do $ra           
@@ -281,50 +282,50 @@ fim_decodifica_tipo:                                  # printa o tipo e finaliza
             jr          $ra                           # retornamos ao procedimento chamador
 
 exec_tipo_i:
-            lw    $t0, opcode                         # carrega o opcode
+            lw          $t0, opcode                   # carrega o opcode
             
-            li	$t1, 0X05		                  # $t1 = 0X05 (opcode bne)
-            beq	$t0, $t1, exec_bne	            # se opcode == opcode bne -> exec_bne
+            li	      $t1, 0X05		            # $t1 = 0X05 (opcode bne)
+            beq	      $t0, $t1, exec_bne	      # se opcode == opcode bne -> exec_bne
 
-            li	$t1, 0X08		                  # $t1 = 0X08 (opcode addi)
-            beq	$t0, $t1, exec_addi	            # se opcode == opcode addi -> exec_addi
+            li	      $t1, 0X08		            # $t1 = 0X08 (opcode addi)
+            beq	      $t0, $t1, exec_addi	      # se opcode == opcode addi -> exec_addi
 
-            li	$t1, 0X09		                  # $t1 = 0X09 / (opcode addiu)
-            beq	$t0, $t1, exec_addiu	            # se opcode == opcode addiu -> exec_addiu
+            li	      $t1, 0X09		            # $t1 = 0X09 / (opcode addiu)
+            beq	      $t0, $t1, exec_addiu	      # se opcode == opcode addiu -> exec_addiu
 
-            li	$t1, 0X0F		                  # $t1 = 0X0F / (opcode lui)
-            beq	$t0, $t1, exec_lui	            # se opcode == opcode lui -> exec_lui
+            li	      $t1, 0X0F		            # $t1 = 0X0F / (opcode lui)
+            beq	      $t0, $t1, exec_lui	      # se opcode == opcode lui -> exec_lui
 
-            li	$t1, 0X0D		                  # $t1 = 0X0D / (opcode ori)
-            beq	$t0, $t1, exec_ori	            # se opcode == opcode ori -> exec_ori
+            li	      $t1, 0X0D		            # $t1 = 0X0D / (opcode ori)
+            beq	      $t0, $t1, exec_ori	      # se opcode == opcode ori -> exec_ori
 
-            li	$t1, 0X23		                  # $t1 = 0X23 / (opcode lw)
-            beq	$t0, $t1, exec_lw	                  # se opcode == opcode lw -> exec_lw
+            li	      $t1, 0X23		            # $t1 = 0X23 / (opcode lw)
+            beq	      $t0, $t1, exec_lw	            # se opcode == opcode lw -> exec_lw
 
-            li	$t1, 0X2B		                  # $t1 = 0X2B / (opcode sw)
-            beq	$t0, $t1, exec_sw	                  # se opcode == opcode sw -> exec_sw
+            li	      $t1, 0X2B		            # $t1 = 0X2B / (opcode sw)
+            beq	      $t0, $t1, exec_sw	            # se opcode == opcode sw -> exec_sw
 
 exec_tipo_j:
-            lw    $t0, opcode
-            
-            li	$t1, 0X03	                        # $t1 = 0X03 / (opcode jal)
-            beq	$t0, $t1, exec_jal	            # se opcode == opcode jal -> exec_jal
+            lw          $t0, opcode
 
-            li	$t1, 0X02		                  # $t1 = 0X09 / (opcode addiu)
-            beq	$t0, $t1, exec_j	                  # se $t0 == opcode j -> exec_j
+            li	      $t1, 0X03	                  # $t1 = 0X03 / (opcode jal)
+            beq	      $t0, $t1, exec_jal	      # se opcode == opcode jal -> exec_jal
+
+            li	      $t1, 0X02		            # $t1 = 0X09 / (opcode addiu)
+            beq	      $t0, $t1, exec_j	            # se $t0 == opcode j -> exec_j
 
 exec_tipo_r:
-            lw	$t5, funct		                  # carrega valor de func 
-            lw	$t4, opcode		                  # carrega o valor do opcode 
+            lw	      $t5, funct		            # carrega valor de func 
+            lw	      $t4, opcode		            # carrega o valor do opcode 
                         
-            li	$t6, 0X0000001c 		            # $t6 = 0X0000001c (opcode mul)
-            beq	$t4, $t6, exec_mul                  # se opcode == opcode mul -> executa mul
-            li	$t6, 0X00000020 		            # $t6 = 0X00000020 (opcode add)
-            beq	$t5, $t6, exec_add	            # se opcode == opcode add -> add
-            li	$t6, 0X00000021 		            # $t6 = 0X00000020 (opcode addu)
-            beq	$t5, $t6, exec_addu	            # se opcode == opcode addu -> addu
-            li	$t6, 0X00000008 		            # $t6 = 0X00000020 (opcode jr)
-            beq	$t5, $t6, exec_jr	                  # se opcode == opcode jr -> jr
+            li	      $t6, 0X0000001c 		      # $t6 = 0X0000001c (opcode mul)
+            beq	      $t4, $t6, exec_mul            # se opcode == opcode mul -> executa mul
+            li	      $t6, 0X00000020 		      # $t6 = 0X00000020 (opcode add)
+            beq	      $t5, $t6, exec_add	      # se opcode == opcode add -> add
+            li	      $t6, 0X00000021 		      # $t6 = 0X00000020 (opcode addu)
+            beq	      $t5, $t6, exec_addu	      # se opcode == opcode addu -> addu
+            li	      $t6, 0X00000008 		      # $t6 = 0X00000020 (opcode jr)
+            beq	      $t5, $t6, exec_jr	            # se opcode == opcode jr -> jr
 
 # TIPO I
 exec_bne:                                             # executa bne
@@ -509,8 +510,6 @@ exec_mul:                                             # executa a multiplicaçã
 exec_syscall:                                         # 10, 1, 4, 11
             la		$t0, registradores		# carrega endereço base dos registradores simulados
             lw          $a0, 16($t0)                  # carrega o conteudo de $a0 simulado       
-            # lw          $a1, 20($t0)                  # carrega o conteudo de $a1 simulado 
-            # lw          $a2, 24($t0)                  # carrega o conteudo de $a2 simulado 
             lw          $v0, 8($t0)                   # carrega o conteudo de $v0 simulado
             
             li		$t1, 10		            # $t1 = 10
@@ -583,4 +582,4 @@ exec_j:                                               # executa um jump
             j           fim_exec
 
 fim_exec:
-            jr          $ra                                 # retornamos ao procedimento chamador
+            jr          $ra                           # retornamos ao procedimento chamador
