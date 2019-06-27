@@ -89,14 +89,11 @@ quebra_linha:                 .asciiz "\n"
 .text
 main:
 		la    $t0, instrucoes
-		sw    $t0, pc                             # inicializa o valor de PC
-
-            la    $t0, pilha
-            
-       
-            addi	$t4, $t0, 200		            # $t4 = $t0 + 200
-            la	$t3, registradores		      # pega o endereco dos registradores simulados
-            sw	$t4, 116($t3)		            # salva o endereço final da pilha simulada no registrador simulado na posição 29 = sp
+		sw    $t0, pc                             # inicializa o valor de PC com o endereço da primeira instrução
+            la    $t0, pilha                          # $t0 = endereço da pilha
+            addi	$t4, $t0, 200		            # $t4 = end pilha + 200 (tamanho total)
+            la	$t3, registradores		      # carrega o endereco dos registradores simulados
+            sw	$t4, 116($t3)		            # salva o endereço final da pilha simulada no registrador simulado na posição 29 ($sp)
             
 		li    $v0, servico_imprime_string 
 		la    $a0, msg_qtd_intrucoes
@@ -122,7 +119,7 @@ main:
             jal   fecha_arquivos                      # fecha os dois arquivos 
 		            
             li    $v0, servico_imprime_string 
-		la    $a0, msg_output                     # Mostra mensagem informando o endereco
+		la    $a0, msg_output                     # Mostra mensagem informando o output do processador q será simulado
 		syscall                                   # chamada ao sistema
 
             j     busca_instrucao                     # pula para busca da instrucao 
@@ -173,18 +170,19 @@ busca_instrucao:
             lw	$t5, 0($t4)		                  # busca instrucao
             sw	$t5, ir		                  # IR recebe a instrucao que sera executada   
             lw    $t2, qtd_instrucoes                 # passa o numero de instrucoes informado pelo usuario       
-            bgt 	$t3, $t2, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes 
+            bgt 	$t3, $t2, fim_programa              # Verifica se ja mostrou a quantidade de instrucoes solicitada pelo usuário 
 		           
-            jal	decodifica_bin				# pula para decodifica_bin e salva a prox posicao no $ra
-            jal   decodifica_tipo                     # pula para decodifica_tipo e salva a prox posicao no $ra                              
+            jal	decodifica_bin				# pula para decodifica_bin e salva a prox instrução no $ra
+            jal   decodifica_tipo                     # pula para decodifica_tipo e salva a prox instrução no $ra                              
             
             lw 	$t3, contador   				# carrega o contador
             lw    $t4, pc                             # carrega valor de pc
             addi  $t3, $t3, 1                         # contador++
             addi	$t4, $t4, 4			            # pc = pc + 4
             sw    $t3, contador		            # Salva valor do contador
-            sw    $t4, pc		                  # Salva valor do contador
-            j     busca_instrucao                     # pulamos para o procedimento
+            sw    $t4, pc		                  # Salva valor do pc
+            j     busca_instrucao                     # pulamos para o procedimento busca_instrução
+
 fecha_arquivos:
             li    $v0, servico_fecha_arquivo          # serviço 16: fecha um arquivo
             la    $t0, descritor_text                 # $t0 <- endereço do descritor do arquivo
@@ -197,7 +195,7 @@ fecha_arquivos:
             jr    $ra                                 # voltamos ao procedimento chamador
 
 fim_programa:
-	    	li    $v0, servico_termina_programa       # fechamos o programa
+	    	li    $v0, servico_termina_programa       # código para fechar o programa
 	   	syscall                                   # chamada ao sistema
 
 decodifica_bin:                                       # decodificamos todos os posiveis cabeçalhos binários
@@ -241,45 +239,37 @@ decodifica_bin:                                       # decodificamos todos os p
 
             jr    $ra                                 # voltamos ao procedimento chamador
             
-decodifica_tipo:                                      # descobre o tipo da instrucao
+decodifica_tipo:                                      # decodifica o tipo da instrucao
             lw	$t3, ir		                  # carrega a instrução
             lw    $t4, funct                          # carrega o funct    
             lw	$t5, opcode		                  # carrega o opcode             
             
             li	$t6, 3		                  # $t6 = 3
-            li	$t1, 0X0000000C		            # $t1 = 0X0000000C
-            beq	$t3, $t1, salva_tipo_syscall	      # verifica se é uma syscall
-            beq	$t5, $zero, salva_tipo_r	      # verifica se é do tipo R
-            bgt	$t5, $t6, salva_tipo_i	            # verifica se é do tipo I
-            j	salva_tipo_j				# é do tipo J
+            li	$t1, 0X0000000C		            # $t1 = 0X0000000C (valor para identificação de uma syscall)
+            beq	$t3, $t1, tipo_syscall	      # verifica se é uma syscall
+            beq	$t5, $zero, tipo_r	      # verifica se é do tipo R
+            bgt	$t5, $t6, tipo_i	            # verifica se é do tipo I
+            j	tipo_j				# é do tipo J
 
-salva_tipo_syscall:
-            li	$t7, 'S'		                  # $t7 = "S"
-            sb	$t7, tipo		                  # salva o tipo na memoria 
+tipo_syscall:
             addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
             sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
             jal   exec_syscall                        # executa a instrucao
             j     fim_decodifica_tipo                 # finaliza
 
-salva_tipo_r:
-            li	$t7, 'R'		                  # $t7 = "R"
-            sb	$t7, tipo		                  # salva o tipo na memoria 
+tipo_r:
             addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
             sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
             jal   exec_tipo_r                         # executa a instrucao
             j     fim_decodifica_tipo                 # finaliza
 
-salva_tipo_j:
-            li	$t7, 'J'		                  # $t7 = "J"
-            sb	$t7, tipo		                  # salva o tipo na memoria 
+tipo_j:
             addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
             sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno
             jal   exec_tipo_j                         # executa a instrucao
             j     fim_decodifica_tipo                 # finaliza
 
-salva_tipo_i:
-            li	$t7, 'I'		                  # $t7 = "I"
-            sb	$t7, tipo		                  # salva o tipo na memoria
+tipo_i:
             addiu $sp, $sp, -4                        # será adicionado um elemento na pilha
             sw    $ra, 0($sp)                         # guardamos na pilha o endereço de retorno 
             jal   exec_tipo_i                         # executa a instrucao
@@ -291,53 +281,50 @@ fim_decodifica_tipo:                                  # printa o tipo e finaliza
             jr          $ra                           # retornamos ao procedimento chamador
 
 exec_tipo_i:
-            lw    $t0, opcode
+            lw    $t0, opcode                         # carrega o opcode
             
-            li	$t1, 0X05		                  # $t1 = 0X05 / bne
-            beq	$t0, $t1, exec_bne	            # if $t0 == $t1 then exec_bne
+            li	$t1, 0X05		                  # $t1 = 0X05 (opcode bne)
+            beq	$t0, $t1, exec_bne	            # se opcode == opcode bne -> exec_bne
 
-            li	$t1, 0X08		                  # $t1 = 0X08 / addi
-            beq	$t0, $t1, exec_addi	            # if $t0 == $t1 then exec_addi
+            li	$t1, 0X08		                  # $t1 = 0X08 (opcode addi)
+            beq	$t0, $t1, exec_addi	            # se opcode == opcode addi -> exec_addi
 
-            li	$t1, 0X09		                  # $t1 = 0X09 / addiu
-            beq	$t0, $t1, exec_addiu	            # if $t0 == $t1 then exec_addiu
+            li	$t1, 0X09		                  # $t1 = 0X09 / (opcode addiu)
+            beq	$t0, $t1, exec_addiu	            # se opcode == opcode addiu -> exec_addiu
 
-            li	$t1, 0X0F		                  # $t1 = 0X0F / lui
-            beq	$t0, $t1, exec_lui	            # if $t0 == $t1 then exec_lui
+            li	$t1, 0X0F		                  # $t1 = 0X0F / (opcode lui)
+            beq	$t0, $t1, exec_lui	            # se opcode == opcode lui -> exec_lui
 
-            li	$t1, 0X0D		                  # $t1 = 0X0D / ori
-            beq	$t0, $t1, exec_ori	            # if $t0 == $t1 then exec_ori
+            li	$t1, 0X0D		                  # $t1 = 0X0D / (opcode ori)
+            beq	$t0, $t1, exec_ori	            # se opcode == opcode ori -> exec_ori
 
-            li	$t1, 0X23		                  # $t1 = 0X23 / lw
-            beq	$t0, $t1, exec_lw	                  # if $t0 == $t1 then exec_lw
+            li	$t1, 0X23		                  # $t1 = 0X23 / (opcode lw)
+            beq	$t0, $t1, exec_lw	                  # se opcode == opcode lw -> exec_lw
 
-            li	$t1, 0X2B		                  # $t1 = 0X2B / sw
-            beq	$t0, $t1, exec_sw	                  # if $t0 == $t1 then exec_sw
+            li	$t1, 0X2B		                  # $t1 = 0X2B / (opcode sw)
+            beq	$t0, $t1, exec_sw	                  # se opcode == opcode sw -> exec_sw
 
-            li	$t1, 0X70		                  # $t1 = 0X70 / mul
-            beq	$t0, $t1, exec_mul	            # if $t0 == $t1 then exec_mul
-            
 exec_tipo_j:
             lw    $t0, opcode
             
-            li	$t1, 0X03	                        # $t1 = 0X03 / jal
-            beq	$t0, $t1, exec_jal	            # if $t0 == $t1 then exec_jal
+            li	$t1, 0X03	                        # $t1 = 0X03 / (opcode jal)
+            beq	$t0, $t1, exec_jal	            # se opcode == opcode jal -> exec_jal
 
-            li	$t1, 0X02		                  # $t1 = 0X09 / addiu
-            beq	$t0, $t1, exec_j	                  # if $t0 == $t1 then exec_j
+            li	$t1, 0X02		                  # $t1 = 0X09 / (opcode addiu)
+            beq	$t0, $t1, exec_j	                  # se $t0 == opcode j -> exec_j
 
 exec_tipo_r:
             lw	$t5, funct		                  # carrega valor de func 
-            lw	$t4, opcode		                  # carrega o opcode 
+            lw	$t4, opcode		                  # carrega o valor do opcode 
                         
-            li	$t6, 0X0000001c 		            # $t6 = 0X0000001c 
-            beq	$t4, $t6, exec_mul                  # executa mul
-            li	$t6, 0X00000020 		            # $t6 = 0X00000020 
-            beq	$t5, $t6, exec_add	            # executa add
-            li	$t6, 0X00000021 		            # $t6 = 0X00000020 
-            beq	$t5, $t6, exec_addu	            # executa addu
-            li	$t6, 0X00000008 		            # $t6 = 0X00000020 
-            beq	$t5, $t6, exec_jr	                  # executa jr
+            li	$t6, 0X0000001c 		            # $t6 = 0X0000001c (opcode mul)
+            beq	$t4, $t6, exec_mul                  # se opcode == opcode mul -> executa mul
+            li	$t6, 0X00000020 		            # $t6 = 0X00000020 (opcode add)
+            beq	$t5, $t6, exec_add	            # se opcode == opcode add -> add
+            li	$t6, 0X00000021 		            # $t6 = 0X00000020 (opcode addu)
+            beq	$t5, $t6, exec_addu	            # se opcode == opcode addu -> addu
+            li	$t6, 0X00000008 		            # $t6 = 0X00000020 (opcode jr)
+            beq	$t5, $t6, exec_jr	                  # se opcode == opcode jr -> jr
 
 # TIPO I
 exec_bne:                                             # executa bne
@@ -353,30 +340,30 @@ exec_bne:                                             # executa bne
             lw		$t0, 0($t0)		            # carrega valor do registrador simulado
             
             bne         $t1, $t0, registradores_diferentes    # instrução será exeutada caso for falsa
-            j           fim_exec                              # segue para próxima instrução
+            j           fim_exec                              # segue para próxima instrução ($t1 == $t0)
             
             registradores_diferentes:
                   lw          $t2, val16bits                # carrega o imediato de 16bits
                   sll         $t2, $t2, 2                   # offset * 4
                   lw		$t3, pc		            # carrega o pc simulado
-                  add		$t3, $t3, $t2		      # $t3 = $t3 + $t2
+                  add		$t3, $t3, $t2		      # $t3 = pc + $t2
                   sw          $t3, pc                       # salva o endereço da instrução no pc simulado
                   j           fim_exec                      # segue para próxima instrução
 
 exec_addiu:                                           # executa o addiu
-            lw		$t1, rs		            # carrega o primeiro valor a ser somado
+            lw		$t1, rs		            # carrega o primeiro registrador a ser somado
             sll         $t1, $t1, 2                   # registrador * 4 
-            lw		$t2, val16bits		      # carrega o segundo valor a ser somado
-            sll         $t2, $t2, 16 
-            sra         $t2, $t2, 16
+            lw		$t2, val16bits		      # carrega o imediasto de 16 bits
+            sll         $t2, $t2, 16                  # arruma os bits para realizar os cálculos com números negativos      
+            sra         $t2, $t2, 16                  # arruma os bits para realizar os cálculos com números negativos
             la		$t4, registradores		# carrega endereço base dos registradores 
             lw		$t0, rt		            # carrega o registrador onde será salvo
             sll         $t0, $t0, 2                   # registrador * 4
             
-            add		$t6, $t4, $t1		      # $t6 = $t1 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
+            add		$t6, $t4, $t1		      # $t6 = $t1 + $t4 (ENDEREÇO DO REGISTRADOR NO VETOR)
             lw		$t1, 0($t6)		            # carrega valor do registrador simulado 
             add		$t5, $t4, $t0		      # $t5 = $t4 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
-            addu		$t3, $t1, $t2		      # $t3 = $t1 + $t2
+            addu		$t3, $t1, $t2		      # $t3 = valor do regitrador + imediato
             sw		$t3, 0($t5)		            # salva a soma no registrador simulado 
             j           fim_exec
 
@@ -386,8 +373,8 @@ exec_addi:                                            # executa o addiu
             lw		$t1, rs		            # carrega o primeiro valor a ser somado 
             sll         $t1, $t1, 2                   # registrador * 4
             lw		$t2, val16bits		      # carrega o segundo valor a ser somado
-            sll         $t2, $t2, 16 
-            sra         $t2, $t2, 16 
+            sll         $t2, $t2, 16                  # arruma os bits
+            sra         $t2, $t2, 16                  # arruma os bits        
             la		$t4, registradores		# carrega endereço base dos registradores 
             
             add		$t0, $t4, $t0		      # $t5 = $t4 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
@@ -408,7 +395,7 @@ exec_lui:                                             # executa o load upper imm
             j           fim_exec
 
 exec_ori:                                             # executa bitwise OR immediate
-            lw		$t0, rt		            # carrega registrador target 
+            lw		$t0, rt		            # carrega registrador destino 
             sll         $t0, $t0, 2                   # registrador * 4
             lw		$t1, rs		            # t1 = rs
             sll         $t1, $t1, 2                   # registrador * 4
@@ -417,9 +404,9 @@ exec_ori:                                             # executa bitwise OR immed
            
             add		$t0, $t3, $t0		      # $t0 = $t3 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
             add		$t1, $t3, $t1		      # $t1 = $t3 + $t1 (ENDEREÇO DO REGISTRADOR NO VETOR)
-            lw		$t1, 0($t1)		            # 
-            or          $t4, $t2, $t1
-            sw		$t4, 0($t0)		            # 
+            lw		$t1, 0($t1)		            # carrega o valor de dentro do registrador simulado
+            or          $t4, $t2, $t1                 # realiza o OR entre o imediato e o valor do registrador
+            sw		$t4, 0($t0)		            # salva o resultado no registrador rt
             j           fim_exec
 
 exec_lw:                                              # executa o load word
@@ -428,29 +415,28 @@ exec_lw:                                              # executa o load word
             sll         $t1, $t1, 2                   # $t1 * 4
             add		$t1, $t1, $t0		      # $t1 = endereço do regitrador simulado 
             lw          $t3, val16bits                # carrega o offset
-            lw		$t2, rs		            # carrega o endereco
+            lw		$t2, rs		            # carrega o rs
             sll         $t2, $t2, 2                   # $t2 * 4
             add		$t2, $t2, $t0		      # $t2 = endereço + offset
-            lw		$t4, 0($t2)		            # 
-            add		$t2, $t3, $t4		      # $t2 = endereço + offset            
+            lw		$t4, 0($t2)		            # carrega o valor de dentro do registrador 
+            add		$t2, $t3, $t4		      # $t2 = valor carregado + offset            
             lw		$t3, 0($t2)		            # busca na memoria  
             sw		$t3, 0($t1)		            # guarda o valor no registrador simulado 
-            
             j           fim_exec
 
 exec_sw:                                              # executa o save word
             la		$t0, registradores		# carrega endereço base dos registradores 
             lw		$t1, rt		            # carrega o valor de rt
             sll         $t1, $t1, 2                   # num do registrador * 4
-            add		$t1, $t1, $t0		      # $t1 = endereço na memoria do registrador simulado
+            add		$t1, $t1, $t0		      # $t1 = endereço de memoria do registrador simulado
             lw		$t2, 0($t1)		            # carrega o conteudo do registrador 
             lw		$t3, rs		            # carrega rs
             sll         $t3, $t3, 2                   # num do registrador * 4
-            add		$t3, $t3, $t0		      # $t3 = endereço na memoria do registrador simulado
-            lw		$t3, 0($t3)		            # 
+            add		$t3, $t3, $t0		      # $t3 = endereço de memoria do registrador simulado
+            lw		$t3, 0($t3)		            # carrega o valor dentro do registrador
             lw          $t4, val16bits                # carrega o  offset
             add		$t5, $t3, $t4		      # endereço + offset
-            sw		$t2, 0($t5)		            # salva na memória 
+            sw		$t2, 0($t5)		            # salva no registrador simulado na memória
             j           fim_exec
 
 # TIPO R
@@ -470,6 +456,7 @@ exec_add:                                             # executa uma soma
             add		$t0, $t7, $t6		      # $t0 = $t7 + $t6 
             sw		$t0, 0($t3)		            # salva a soma no vetor de registradores                            
             j           fim_exec
+
 exec_addu:                                            # executa soma com unsigned
             lw		$t1, rt		            # carrega o registrador a ser somado
             sll         $t1, $t1, 2                   # registrador * 4
@@ -496,8 +483,8 @@ exec_jr:                                              # executa jump register
             la		$t2, registradores		# cerrega endereço base dos registradores 
             add		$t0, $t1, $t2		      # soma base + deslocamento
             lw          $t3, 0($t0)                   # carrega o endereço que será armazenado no pc 
-            addiu	      $t3, $t3, -4			# $t3 = endereço - 4 (POr causa do incremento do pc no loop)
-            la		$t4, pc		            # 
+            addiu	      $t3, $t3, -4			# $t3 = endereço - 4 (Por causa do incremento do pc no loop do busca_instrução)
+            la		$t4, pc		            # carrega o endereço de pc
             sw		$t3, 0($t4)		            # coloca o endereço da instrução no pc 
             j           fim_exec
 
@@ -520,57 +507,53 @@ exec_mul:                                             # executa a multiplicaçã
             j           fim_exec           
 
 exec_syscall:                                         # 10, 1, 4, 11
-            la		$t0, registradores		# cerrega endereço base dos registradores simulados
+            la		$t0, registradores		# carrega endereço base dos registradores simulados
             lw          $a0, 16($t0)                  # carrega o conteudo de $a0 simulado       
-            lw          $a1, 20($t0)                  # carrega o conteudo de $a1 simulado 
-            lw          $a2, 24($t0)                  # carrega o conteudo de $a2 simulado 
+            # lw          $a1, 20($t0)                  # carrega o conteudo de $a1 simulado 
+            # lw          $a2, 24($t0)                  # carrega o conteudo de $a2 simulado 
             lw          $v0, 8($t0)                   # carrega o conteudo de $v0 simulado
             
             li		$t1, 10		            # $t1 = 10
-            beq		$v0, $t1, printa_regs	      # if $v0 == $t1 then target
+            beq		$v0, $t1, printa_regs	      # verifica se é um comando para finalizar o programa, se for printa os registradores antes de finalizar
             syscall
             
-            sw          $v0, 8($t0)                   # carrega o conteudo de $v0 simulado
-            sw          $a0, 16($t0)                  # carrega o conteudo de $a0 simulado       
+            sw          $v0, 8($t0)                   # salva o conteudo de $v0 simulado
+            sw          $a0, 16($t0)                  # salva o conteudo de $a0 simulado       
 
             j           fim_exec           
 
 printa_regs:      
 
-            li	      $s0, 0
+            li	      $s0, 0                        # inicializa $s0 com 0
             
 printa:            
-            li		$t3, 128		            # $t3 = 128
-            beq		$s0, $t3, exit	
+            li		$t3, 128		            # $t3 = 128 = 31 * 4
+            beq		$s0, $t3, fim_programa	      # verifica se já imprimiu todos registradores, caso já tenha terminado finaliza o programa
             
             li          $v0, servico_imprime_string 
-		la          $a0, msg_registrador          # Mostra mensagem informando o endereco
+		la          $a0, msg_registrador          # Mostra mensagem informando o registrador
 		syscall                                   # chamada ao sistema            
             
-            li		$t1, 4 		            #    
-            div		$s0, $t1			      #       
-            mflo	      $t1                           # 
+            li		$t1, 4 		            # $t1 = 4   
+            div		$s0, $t1			      # divide a posição no vetor percorrido por 4 para saber o número do registrador       
+            mflo	      $t1                           # $t1 recebe a divisão
              
             li          $v0, servico_imprime_int 
 		move 	      $a0, $t1		            # $a0 = $01
-            syscall
+            syscall                                   # imprime o número do registrador na tela
 
             li          $v0, servico_imprime_string 
-		la          $a0, msg_seta                 # Mostra mensagem informando o endereco
+		la          $a0, msg_seta                 # Mostra mensagem que printa uma seta na tela ( -> )
 		syscall                                   # chamada ao sistema        
 
             li          $v0, servico_imprime_int 
-		la		$t4, registradores		# 
-            add		$s2, $t4, $s0		      # $s2 = $t1 + $t2
-            lw		$a0, 0($s2)		# 
-            syscall
+		la		$t4, registradores		# carrega o endereço base dos registradores
+            add		$s2, $t4, $s0		      # calcula o endereço do registrador dentro do vetor de registradores
+            lw		$a0, 0($s2)		            # carrega o valor do registrador 
+            syscall                                   # chamada ao sistema  
 
-            addi	      $s0, $s0, 4			      
+            addi	      $s0, $s0, 4			      # incrementa o $s0 para o próximo registrador no vetor
             j printa
-
-exit:
-            li          $v0, servico_termina_programa
-            syscall
 
 #TIPO J
 exec_jal:                                             # executa um jump and link
@@ -594,7 +577,7 @@ exec_j:                                               # executa um jump
             la		$t2, instrucoes		      # carrega endereço base das instrucoes
             
             add		$t4, $t2, $t1		      # soma base + deslocamento
-            addiu	      $t4, $t4, -4			# $t4 = endereço - 4 (POr causa do incremento do pc no loop)
+            addiu	      $t4, $t4, -4			# $t4 = endereço - 4 (Por causa do incremento do pc no loop de busca_instrução)
             sw          $t4, pc                       # pc recebe o endereco da instrução
             
             j           fim_exec
