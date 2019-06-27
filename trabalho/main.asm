@@ -413,17 +413,13 @@ exec_ori:                                             # executa bitwise OR immed
             lw		$t1, rs		            # t1 = rs
             sll         $t1, $t1, 2                   # registrador * 4
             lw		$t2, val16bits		      # t2 = valor de 16 bits 
-            
             la		$t3, registradores		# carrega endereço base dos registradores 
-            la		$t4, data 
-            
-            add		$t0, $t3, $t0		      # $t0 = $t4 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
-            add		$t1, $t3, $t1		      # $t1 = $t4 + $t1 (ENDEREÇO DO REGISTRADOR NO VETOR)
-            andi        $t4, $t4, 0X0000FFFF
-            add		$t5, $t2, $t4		
+           
+            add		$t0, $t3, $t0		      # $t0 = $t3 + $t0 (ENDEREÇO DO REGISTRADOR NO VETOR)
+            add		$t1, $t3, $t1		      # $t1 = $t3 + $t1 (ENDEREÇO DO REGISTRADOR NO VETOR)
             lw		$t1, 0($t1)		            # 
-            or          $t6, $t5, $t1
-            sw		$t6, 0($t0)		            # 
+            or          $t4, $t2, $t1
+            sw		$t4, 0($t0)		            # 
             j           fim_exec
 
 exec_lw:                                              # executa o load word
@@ -532,7 +528,6 @@ exec_syscall:                                         # 10, 1, 4, 11
             
             li		$t1, 10		            # $t1 = 10
             beq		$v0, $t1, printa_regs	      # if $v0 == $t1 then target
-            
             syscall
             
             sw          $v0, 8($t0)                   # carrega o conteudo de $v0 simulado
