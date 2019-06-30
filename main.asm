@@ -159,7 +159,7 @@ busca_instrucao:
             lw	      $t5, 0($t4)		            # busca instrucao
             sw	      $t5, ir		            # IR recebe a instrucao que sera executada   
             lw          $t2, qtd_instrucoes           # passa o numero de instrucoes informado pelo usuario       
-            bgt 	      $t3, $t2, fim_programa        # Verifica se ja mostrou a quantidade de instrucoes solicitada pelo usuário 
+            bgt 	      $t3, $t2, printa_regs        # Verifica se ja mostrou a quantidade de instrucoes solicitada pelo usuário 
 		           
             jal	      decodifica_bin			# pula para decodifica_bin e salva a prox instrução no $ra
             jal         decodifica_tipo               # pula para decodifica_tipo e salva a prox instrução no $ra                              
