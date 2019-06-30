@@ -1,4 +1,4 @@
-# Autor: Yuri Becker e Daniel Libaroni
+# Autor: Yuri Becker e Daniel Libanori
 # Descrição: Trabalho da disciplina de Organização de Computadores 
 
 # Constantes usadas no programa
@@ -25,17 +25,7 @@
 .eqv  mask_val16bits                0x0000FFFF
 .eqv  mask_val26bits                0x03FFFFFF
 
-.eqv  tamanho_pilha                 50                # constante com o tamanho da pilha
-
-.eqv  end_inicial_texto             0X00400000
-
-# valores hexadecimais dos registradores
-.eqv val_s0                         0X00000010
-.eqv val_zero                       0X00000000
-.eqv val_a0                         0X00000004
-.eqv val_v0                         0X00000002
-.eqv val_t0                         0X00000008
-.eqv val_t1                         0X00000009
+.eqv  tamanho_pilha                 200               # constante com o tamanho da pilha
 
 ####################################################################################################################
 # segmento de dados
@@ -53,7 +43,6 @@ nome_arquivo_data:      .asciiz "data.bin"            # nome do arquivo2 a ser a
 qtd_instrucoes:         .word 
 
 # enderecos
-# end_inicial_texto:      .word 0X00400000
 end_inicial_data:       .word 0X10010000
 
 # Registradores do processador falso
@@ -72,8 +61,7 @@ funct: 	            .space 4
 val16bits: 	            .space 4
 val26bits: 	            .space 4
 
-contador:               .word 1                       # <- Contador do loop / numero de instrucoes já lidas
-tipo:                   .space 1                      # <- Tipo da instrucao
+contador:               .word 1                       # Contador do loop / numero de instrucoes já lidas
 
 # strings de mensagens para o usuario
 msg_qtd_intrucoes:            .asciiz "Numero de instrucoes que serão executadas (Max 98): "
@@ -81,7 +69,8 @@ msg_arquivo_nao_foi_aberto:   .asciiz "\nArquivo nao pode ser aberto \n"
 msg_arquivo_aberto:           .asciiz "Arquivo aberto com sucesso! \n" 
 msg_output:                   .asciiz "\nOutput do simulador:  "
 msg_registrador:              .asciiz "\nRegistrador simulado número "
-msg_seta:                     .asciiz " --> "
+msg_hex:                      .asciiz " --> HEX: "
+msg_decimal:                  .asciiz " - DECIMAL: "
 quebra_linha:                 .asciiz "\n"
 
 # segmento de texto (programa)
@@ -91,7 +80,7 @@ main:
 		la          $t0, instrucoes               # carrega o endereço da primeira instrução
 		sw          $t0, pc                       # inicializa o valor de PC com o endereço da primeira instrução
             la          $t0, pilha                    # $t0 = endereço da pilha
-            addi	      $t4, $t0, 200		      # $t4 = end pilha + 200 (tamanho total)
+            addi	      $t4, $t0, tamanho_pilha		# $t4 = end pilha + 200 (tamanho total)
             la	      $t3, registradores		# carrega o endereco dos registradores simulados
             sw	      $t4, 116($t3)		      # salva o endereço final da pilha simulada no registrador simulado na posição 29 ($sp)
             
@@ -105,15 +94,15 @@ main:
             la          $a0, nome_arquivo_data 
             la          $a1, descritor_data
             jal         abre_arquivo                  # abrimos o arquivo data.bin para a leitura  
-		lw          $a0, descritor_data           # $a0 <- o valor do descritor do arquivo
-            la          $a1, data                     # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+		lw          $a0, descritor_data           # $a0 = o valor do descritor do arquivo
+            la          $a1, data                     # $a1 = endereço do instrucoes que guarda os carcateres lidos
             jal         leia_caracteres_arquivo		# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
 
             la          $a0, nome_arquivo_text 
             la          $a1, descritor_text
             jal         abre_arquivo                  # abrimos o arquivo text.bin para a leitura
-		lw          $a0, descritor_text           # $a0 <- o valor do descritor do arquivo
-            la          $a1, instrucoes               # $a1 <- endereço do instrucoes que guarda os carcateres lidos
+		lw          $a0, descritor_text           # $a0 = o valor do descritor do arquivo
+            la          $a1, instrucoes               # $a1 = endereço do instrucoes que guarda os carcateres lidos
             jal         leia_caracteres_arquivo		# pula para leia_caracteres_arquivo e salva a prox posicao no $ra
 
             jal         fecha_arquivos                # fecha os dois arquivos 
@@ -127,21 +116,21 @@ main:
 # lemos o arquivo e colocamos na memória
 leia_caracteres_arquivo:
             li          $v0, servico_leia_arquivo     # serviço 14: leitura do arquivo
-            li          $a2, 4096                     # $a2 <- número máximo de carcateres lidos
+            li          $a2, 4096                     # $a2 = número máximo de carcateres lidos
             syscall                                   # fazemos a leitura de caracateres do arquivo para o instrucoes
             move        $s0, $v0                      # armazenamos o número de caracteres lidos em $s0
             move        $s1, $a1                      # armazenamos o endereço das instrucoes em $s1                                     
             jr          $ra 					# retorna para o procedimento chamador 
             
 arquivo_aberto_com_sucesso:
-            la          $t0, descritor_text           # $t0 <- endereço da variável descritor_arquivo
+            la          $t0, descritor_text           # $t0 = endereço da variável descritor_arquivo
             sw          $v0, 0($t0)                   # armazenamos na variável descritor_arquivo seu valor
 
 abre_arquivo:
             addiu       $sp, $sp, -4                  # será adicionado um elemento na pilha
             sw          $a1, 0($sp)                   # guardamos na pilha o endereço da variável descritor do arquivo
             li          $v0, servico_abre_arquivo     # serviço 13: abre um arquivo
-            li          $a1, 0                        # $a1 <- 0: arquivo será aberto para leitura
+            li          $a1, 0                        # $a1 = 0: arquivo será aberto para leitura
             li          $a2, 0                        # modo não é usado. Use o valor 0.
             syscall                                   # abre o arquivo
 
@@ -185,11 +174,11 @@ busca_instrucao:
 
 fecha_arquivos:
             li          $v0, servico_fecha_arquivo    # serviço 16: fecha um arquivo
-            la          $t0, descritor_text           # $t0 <- endereço do descritor do arquivo
+            la          $t0, descritor_text           # $t0 = endereço do descritor do arquivo
             lw          $a0, 0($t0)                   # carregamos em $a0 o descritor do arquivo
             syscall                                   # fechamos o arquivo
             li          $v0, servico_fecha_arquivo    # serviço 16: fecha um arquivo
-            la          $t0, descritor_data           # $t0 <- endereço do descritor do arquivo
+            la          $t0, descritor_data           # $t0 = endereço do descritor do arquivo
             lw          $a0, 0($t0)                   # carregamos em $a0 o descritor do arquivo
             syscall                                   # fechamos o arquivo
             jr          $ra                           # voltamos ao procedimento chamador
@@ -239,9 +228,8 @@ decodifica_bin:                                       # decodificamos todos os p
       
             jr          $ra                           # voltamos ao procedimento chamador
             
-decodifica_tipo:                                      # decodifica o tipo da instrucao
-            lw	      $t3, ir		            # carrega a instrução
-            lw          $t4, funct                    # carrega o funct    
+decodifica_tipo:                                      # decodifica o tipo da instrucao usando o opcode 
+            lw	      $t3, ir		            # carrega a instrução   
             lw	      $t5, opcode		            # carrega o opcode             
             
             li	      $t6, 3		            # $t6 = 3
@@ -542,7 +530,17 @@ printa:
             syscall                                   # imprime o número do registrador na tela
 
             li          $v0, servico_imprime_string 
-		la          $a0, msg_seta                 # Mostra mensagem que printa uma seta na tela ( -> )
+		la          $a0, msg_hex                  # Mostra mensagem que printa uma seta na tela ( -> HEX: )
+		syscall                                   # chamada ao sistema        
+
+            li          $v0, servico_imprime_hexa 
+		la		$t4, registradores		# carrega o endereço base dos registradores
+            add		$s2, $t4, $s0		      # calcula o endereço do registrador dentro do vetor de registradores
+            lw		$a0, 0($s2)		            # carrega o valor do registrador 
+            syscall                                   # chamada ao sistema  
+
+            li          $v0, servico_imprime_string 
+		la          $a0, msg_decimal              # Mostra mensagem que printa uma seta na tela ( DECIMAL: )
 		syscall                                   # chamada ao sistema        
 
             li          $v0, servico_imprime_int 
